@@ -1,0 +1,177 @@
+body {
+  font-family: Arial, sans-serif;
+background: url(fondo2.png) center center / contain, linear-gradient(244deg, #ffffff 0%, #ffffff 50%, #c7c7c7 100%)
+}
+html, body {
+  height: 100%;
+  margin: 0;
+  
+  overflow-x: hidden; /* solo oculta scroll horizontal */
+  background: url(fondo2.png) center center / contain, linear-gradient(244deg, #ffffff 0%, #ffffff 50%, #c7c7c7 100%)
+}
+
+
+.contenedor {
+  display: flex;
+  padding-left: 60px;
+  height: calc(110vh - 56px);
+}
+
+#mapa {
+  flex: 2;    /* toma 2 partes */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+}
+
+#info {
+  flex: 1;    /* toma 1 parte */
+  padding: 60px;
+  border-left: 1px solid #ccc;
+}
+
+
+#mapa, #info {
+  height: 100%;
+}
+
+#tooltip {
+  position: absolute;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: none;
+  pointer-events: none;
+  font-size: 14px;
+}
+
+
+.tabla-responsiva {
+  overflow-x: auto;
+}
+
+.tabla-responsiva table {
+  width: 100%;
+  border-collapse: collapse;
+}
+* --- TABLERO2.PHP ESTILOS --- */
+
+/* Reajuste de #info solo cuando es necesario */
+#info.tablero-ajuste {
+  width: auto !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+#info-tablero {
+  width: 100%;
+  padding: 100px;
+  margin: 0 auto;
+}
+
+#info-tablero h1 {
+  text-align: center;
+  font-size: 56px;
+  margin-bottom: 30px;
+  text-transform: uppercase;
+}
+
+.zona-tablero * {
+  /*all: unset;*/
+  box-sizing: border-box;
+  font-size: 28px;
+}
+
+.zona-tablero {
+  font-size: 28px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 40px;
+  font-family: Arial, sans-serif;
+}
+
+.contenedor-dashboard {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 60px;
+  padding: 30px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.panel-produccion {
+  min-width: 250px;
+      color: #fff;
+    background-color: #0000003b;
+  padding: 110px 20px;
+  text-align: center;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.panel-produccion h1 {
+  font-size: 28px;
+  margin-bottom: 20px;
+  font-weight: bold;
+  text-align: center;
+  
+}
+
+.panel-produccion p {
+  font-size: 24px;
+  margin: 0;
+  color: #fff;
+}
+
+.cantidad-total {
+  display: block;
+  font-size: 86px !important;
+  font-weight: bold !important;
+  color: #222;
+  margin: 0;
+  text-align: center;
+}
+
+.tabla-articulos {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 30px;
+  justify-items: center;
+}
+
+.articulo img {
+  width: 150px;
+  height: 150px;
+}
+
+.nombre-bus {
+  font-size: 16px;
+  margin-top: 10px;
+  color: #555;
+}
+
+.cantidad-bus {
+  font-size: 32px;
+  font-weight: bold;
+  color: #222;
+  margin-top: 8px;
+}
+
+.articulo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+#info.tablero-ajuste {
+  width: 100% !important;
+  padding: 0 !important;
+  border: none !important;
+}

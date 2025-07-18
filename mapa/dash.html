@@ -1,0 +1,78 @@
+<?php
+include 'db.php';
+
+// Mapeo de buses por nombre para mostrar el contador
+$buses = [
+    1 => 'VRYR',
+    2 => 'LC',
+    3 => 'RNIP',
+    4 => 'MJ',
+    5 => 'CUP',
+    6 => '911',
+    7 => 'LPR',
+    8 => 'RNAE_ARMAS',
+    9 => 'RNAE_EQUIPO',
+    10 => 'VO'
+];
+
+// Inicializar contadores
+$contadores = array_fill_keys(array_keys($buses), 0);
+
+// Consulta
+$query = "SELECT ID_BUS, COUNT(*) AS total FROM registro GROUP BY ID_BUS";
+$stmt = $pdo->query($query);
+
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $id_bus = $row['ID_BUS'];
+    if (isset($contadores[$id_bus])) {
+        $contadores[$id_bus] = $row['total'];
+    }
+}
+
+// meta e implementados fijos
+$meta_nuevos = 6;
+$meta_migraciones = 5;
+$implementados_nuevos = 3;
+$implementados_migraciones = 1;
+
+?>
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard de Producción</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .grid { display: grid; grid-template-columns: repeat(5, 120px); gap: 10px; margin: 20px; }
+        .icon { text-align: center; }
+        .big-number { font-size: 80px; text-align: center; }
+        .side { float: right; margin: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="big-number">
+    <div>PRODUCCIÓN</div>
+    <div>127</div>
+</div>
+
+<div class="grid">
+<?php foreach ($buses as $id => $label): ?>
+    <div class="icon">
+        <img src="icons/<?php echo $label; ?>.png" width="100" height="80"><br>
+        <strong><?php echo $contadores[$id]; ?></strong>
+    </div>
+<?php endforeach; ?>
+</div>
+
+<div class="side">
+    <h2>2025</h2>
+    <p><strong>Meta Nuevos:</strong> <?php echo $meta_nuevos; ?></p>
+    <p><strong>Meta Migraciones:</strong> <?php echo $meta_migraciones; ?></p>
+    <p><strong>Implementados Nuevos:</strong> <?php echo $implementados_nuevos; ?></p>
+    <p><strong>Implementados Migraciones:</strong> <?php echo $implementados_migraciones; ?></p>
+</div>
+
+</body>
+</html>
