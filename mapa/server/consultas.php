@@ -19,19 +19,21 @@ $query = "
         d.Nombre AS Dependencia, 
         e.Nombre AS Entidad, 
         b.Nombre AS Bus,
-        es.Valor AS Estatus
+        v.descripcion AS Version,
+        es.Valor AS Estatus,
         c.Valor AS Categoria
     FROM registro r
-    LEFT JOIN tecnologia t ON r.Fk_Id_Tecnologia = t.Id
-    LEFT JOIN dependencia d ON r.Fk_Id_Dependencia = d.Id
-    LEFT JOIN entidad e ON r.Fk_Id_Entidad = e.Id
-    LEFT JOIN bus b ON r.Fk_Id_Bus = b.Id
-    LEFT JOIN estatus es ON r.Fk_Id_Estatus = es.Id
-    LEFT JOIN categoria c ON r.Fk_Id_Categoria = c.Id
+    LEFT JOIN tecnologia t ON r.Fk_Tecnologia = t.Id
+    LEFT JOIN dependencia d ON r.Fk_Dependencia = d.Id
+    LEFT JOIN entidad e ON r.Fk_Entidad = e.Id
+    LEFT JOIN bus b ON r.Fk_Bus = b.Id
+    LEFT JOIN VERSION v ON r.Fk_version = v.ID
+    LEFT JOIN estatus es ON r.Fk_Estatus = es.Id
+    LEFT JOIN categoria c ON r.Fk_Categoria = c.Id
 
 ";
 if ($filtro_entidad) {
-    $query .= " WHERE r.Fk_Id_Entidad = " . intval($filtro_entidad);
+    $query .= " WHERE r.Fk_Entidad = " . intval($filtro_entidad);
 }
 
 $query .= " ORDER BY r.Id DESC";  // aquí la ordenación final

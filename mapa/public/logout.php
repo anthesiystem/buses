@@ -1,39 +1,29 @@
 <?php
 session_start();
+require_once __DIR__ . '/../server/config.php';
 
-// registrar LOGOUT antes de destruir la sesión
 if (isset($_SESSION['usuario_id'])) {
-    $conn = new mysqli('localhost', 'admin', 'admin1234', 'busmap');
-    if (!$conn->connect_error) {
-        $stmt = $conn->prepare("INSERT INTO logsesion (Fk_Id_User, Tipo_Evento) VALUES (?, 'LOGOUT')");
-        $stmt->bind_param("i", $_SESSION['usuario_id']);
-        $stmt->execute();
-        $stmt->close();
-        $conn->close();
+    try {
+        $stmt = $pdo->prepare("INSERT INTO sesion (Fk_User, Tipo_Evento) VALUES (?, 'LOGOUT')");
+        $stmt->execute([$_SESSION['usuario_id']]);
+    } catch (Exception $e) {
+        // log error opcional
     }
 }
 
-// borrar todas las variables de sesión
+// Limpiar sesión y cookies
 $_SESSION = [];
-
-// destruir la sesión
 session_destroy();
 
-// invalidar la cookie de sesión
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
-    setcookie(
-        session_name(),
-        '',
-        time() - 42000,
-        $params["path"],
-        $params["domain"],
-        $params["secure"],
-        $params["httponly"]
-    );
+    setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
 }
 
-// redirigir
-header("Location: login.php");
+// Borrar cookies personalizadas
+setcookie("usuario", "", time() - 3600, "/");
+setcookie("usuario_id", "", time() - 3600, "/");
+setcookie("fk_perfiles", "", time() - 3600, "/");
+
+header("Location: login.php?logout=1");
 exit;
-?>

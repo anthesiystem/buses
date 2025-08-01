@@ -3,60 +3,56 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$host = 'localhost';
-$db = 'busmap';
-$user = 'admin';
-$pass = 'admin1234';
+require_once __DIR__ . '/config.php';
 
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
-    die("Conexión fallida: " . $conn->connect_error);
-}
 
 if (isset($_POST['usuario']) && isset($_POST['password'])) {
     $usuario = $_POST['usuario'];
     $password = $_POST['password'];
 
-    $stmt = $conn->prepare("SELECT Id, User, Password, fk_id_perfiles FROM usuarios WHERE User = ?");
-    $stmt->bind_param("s", $usuario);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    try {
+        $stmt = $pdo->prepare("SELECT ID, cuenta, contrasena, nivel FROM usuario WHERE cuenta = ? ");
+        $stmt->execute([$usuario]);
+        $row = $stmt->fetch();
 
-    if ($result->num_rows === 1) {
-        $row = $result->fetch_assoc();
+        if ($row) {
+            // Comparar contraseñas (sin hash por ahora)
 
-        // ← Comparación directa si no usas hash (para desarrollo)
-        if ($password === $row['Password']) {
-            $_SESSION['usuario'] = $row['User'];
-            $_SESSION['fk_id_perfiles'] = $row['fk_id_perfiles'];
-            $_SESSION['usuario_id'] = $row['Id']; // ✅ ESTA ES LA CLAVE
-            $_SESSION['ultima_actividad'] = time();
-            
+            echo 'Input usuario: ' . $usuario . '<br>';
+            echo 'Input pass: ' . $password . '<br>';
+            echo 'DB pass: ' . $row['contrasena'] . '<br>';
 
 
-            // Guardar en logsesion
-            $stmt = $conn->prepare("INSERT INTO logsesion (Fk_Id_User, Tipo_Evento) VALUES (?, 'LOGIN')");
-            $stmt->bind_param("i", $row['Id']); // Suponiendo que $row contiene al usuario validado
-            $stmt->execute();
+            if (trim($password) === trim($row['contrasena'])) {
+                $_SESSION['usuario'] = $row['cuenta'];
+                $_SESSION['usuario_id'] = $row['ID'];
+                $_SESSION['fk_perfiles'] = $row['nivel']; // Aquí se asigna correctamente el nivel
+                $_SESSION['ultima_actividad'] = time();
 
+                // Cargar permisos del usuario
+                require_once 'permiso.php';
+                cargarPermisos($row['ID'], $pdo);
 
+                
+                // Registrar login
+                $stmtLog = $pdo->prepare("INSERT INTO sesion (Fk_usuario, Tipo_evento) VALUES (?, 'LOGIN')");
+                $stmtLog->execute([$row['ID']]);
 
-             header("Location: ../public/tablero.php");
-                            exit();
-                        } else {
-                            header("Location: ../public/login.php?error=1");
-                            exit();
-                        }
-                    } else {
-                        header("Location: ../public/login.php?error=1");
-                        exit();
-                    }
-
-                    $stmt->close();
-                } else {
-                    header("Location: ../public/login.php?error=2");
-                    exit();
-                }
-
-$conn->close();
-?>
+                header("Location: ../public/index.php");
+                exit();
+            } else {
+                header("Location: ../public/login.php?error=1"); // Contraseña incorrecta
+                exit();
+            }
+        } else {
+            header("Location: ../public/login.php?error=1"); // Usuario no encontrado
+            exit();
+        }
+    } catch (PDOException $e) {
+ echo "❌ Error de conexión o consulta: " . $e->getMessage();
+    exit;
+    }
+} else {
+    header("Location: ../public/login.php?error=2"); // Datos incompletos
+    exit();
+}

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo PDF jsPDF autoTable</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+  <h2>Generador de PDF Demo</h2>
+  <button onclick="generarPDF()">Generar PDF</button>
+
+  <script>
+    async function generarPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const fecha = new Date().toLocaleDateString("es-MX");
+
+      // Título
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text("Resumen de Registros", pageWidth / 2, 80, { align: 'center' });
+
+      // Simular 41 registros
+      const headers = [["CATEGORÍA", "ENGINE", "TECNOLOGÍA", "DEPENDENCIA", "ENTIDAD", "BUS", "VERSIÓN", "INICIO", "MIGRACIÓN", "ESTATUS", "AVANCE"]];
+      const rows = [];
+      for (let i = 1; i <= 41; i++) {
+        rows.push([`CAT${i}`, "SQL", "DM", "SSP", "YUCATAN", `BUS${i}`, "8.R9", "2025-01-01", "2025-01-10", "IMPLEMENTADO", `${i * 2}%`]);
+      }
+
+      // Tabla
+      doc.autoTable({
+        head: headers,
+        body: rows,
+        startY: 100,
+        margin: { top: 100, bottom: 60, left: 20, right: 20 },
+        styles: {
+          fontSize: 8,
+          halign: 'center'
+        },
+        headStyles: {
+          fillColor: [155, 34, 71],
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245]
+        },
+        pageBreak: 'auto',
+        didDrawPage: function (data) {
+          doc.setFontSize(9);
+          doc.setTextColor(0);
+          doc.text(fecha, pageWidth - 80, pageHeight - 30);
+          doc.text(`Página ${data.pageNumber}`, 30, pageHeight - 30);
+        }
+      });
+
+      doc.save("demo_registros.pdf");
+    }
+  </script>
+</body>
+</html>

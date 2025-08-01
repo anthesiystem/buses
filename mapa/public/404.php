@@ -35,7 +35,7 @@ http_response_code(404);
     <div>
       <h1>404</h1>
       <p>La página que buscas no existe o fue movida.</p>
-      <a href="index.php" class="btn btn-primary mt-3">Volver al inicio</a>
+      <a href="general.php" class="btn btn-primary mt-3">Volver al inicio</a>
     </div>
   </div>
 

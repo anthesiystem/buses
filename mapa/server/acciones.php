@@ -3,27 +3,29 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-
 require_once __DIR__ . '/config.php';
 
 function registrarBitacora($pdo, $usuarioId, $tabla, $idRegistro, $accion, $descripcion) {
-    $stmt = $pdo->prepare("INSERT INTO bitacora (Fk_Id_Usuarios, Tabla_Afectada, Id_Registro_Afectado, Tipo_Accion, Descripcion) VALUES (?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("
+        INSERT INTO BITACORA (Fk_usuario, tabla_afectada, ID_registro_afectado, tipo_accion, descripcion)
+        VALUES (?, ?, ?, ?, ?)
+    ");
     $stmt->execute([$usuarioId, $tabla, $idRegistro, $accion, $descripcion]);
 }
 
+// Activar/desactivar
 if (isset($_GET['activar']) && isset($_GET['id'])) {
-    $id = $_GET['id'];
-    $estado = $_GET['activar']; // 1 = activar, 0 = desactivar
+    $id     = intval($_GET['id']);
+    $estado = intval($_GET['activar']); // 1 = activar, 0 = desactivar
 
-    $stmt = $pdo->prepare("UPDATE registro SET Activo = ? WHERE Id = ?");
+    $stmt = $pdo->prepare("UPDATE REGISTRO SET activo = ? WHERE ID = ?");
     $stmt->execute([$estado, $id]);
 
-    // Registro en bitácora
-    $accion = $estado == 1 ? 'ACTIVAR' : 'DESACTIVAR';
+    $accion = $estado === 1 ? 'ACTIVAR' : 'DESACTIVAR';
     registrarBitacora(
         $pdo,
         $_SESSION['usuario_id'],
-        'registro',
+        'REGISTRO',
         $id,
         $accion,
         "El usuario {$_SESSION['usuario_id']} realizó $accion sobre el registro $id"
@@ -33,87 +35,84 @@ if (isset($_GET['activar']) && isset($_GET['id'])) {
     exit;
 }
 
-
+// Alta o modificación de registros
 $fecha_modificacion = date('Y-m-d H:i:s');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $fk_engine = $_POST['fk_engine'];
-    $fk_tecnologia = $_POST['fk_tecnologia'];
-    $fk_dependencia = $_POST['fk_dependencia'];
-    $fk_entidad = $_POST['fk_entidad'];
-    $fk_bus = $_POST['fk_bus'];
-    $fk_estatus = $_POST['fk_estatus'];
-    $fk_categoria = $_POST['fk_categoria'];
-    $avance = $_POST['avance'];
-    $version = $_POST['version'];
-    $fecha_inicio = $_POST['fecha_inicio'];
-    $migracion = empty($_POST['Migracion']) ? null : $_POST['Migracion'];
+    $fk_engine      = (int)$_POST['fk_engine'];
+    $fk_version     = (int)$_POST['fk_version'];
+    $fk_dependencia = (int)$_POST['fk_dependencia'];
+    $fk_entidad     = (int)$_POST['fk_entidad'];
+    $fk_bus         = (int)$_POST['fk_bus'];
+    $fk_estado_bus  = (int)$_POST['fk_estatus']; // ahora es estado_bus
+    $fk_categoria   = (int)$_POST['fk_categoria'];
+    $avance         = (int)$_POST['avance'];
+    $fecha_inicio   = $_POST['fecha_inicio'];
+    $fecha_migracion = empty($_POST['Migracion']) ? null : $_POST['Migracion'];
 
-    // Validar avance si estatus es concluido
-    if ((int)$fk_estatus === 2) {
+
+    // Si el estatus representa "IMPLEMENTADO", forzar avance al 100
+    if ($fk_estado_bus === 2) { // 2 = IMPLEMENTADO según tu tabla
         $avance = 100;
     } else {
-        $avance = min((int)$avance, 99);
+        $avance = min($avance, 99);
     }
 
     if (!empty($_POST['id'])) {
-        // Actualizar registro
-        $id = $_POST['id'];
-        $sql = "UPDATE registro SET 
-            Fk_Id_Engine = ?, 
-            Fk_Id_Tecnologia = ?, 
-            Fk_Id_Dependencia = ?, 
-            Fk_Id_Entidad = ?, 
-            Fk_Id_Bus = ?, 
-            Fk_Id_Estatus = ?, 
-            Fk_Id_Categoria = ?, 
-            Avance = ?, 
-            Version = ?, 
-            Fecha_Inicio = ?, 
-            Migracion = ?, 
-            Fecha_Modificacion = ?
-        WHERE Id = ?";
+        // Actualización
+        $id = (int)$_POST['id'];
+        $sql = "UPDATE REGISTRO SET 
+            Fk_engine       = ?, 
+            Fk_version      = ?, 
+            Fk_dependencia  = ?, 
+            Fk_entidad      = ?, 
+            Fk_bus          = ?, 
+            Fk_estado_bus   = ?, 
+            Fk_categoria    = ?, 
+            avance             = ?, 
+            fecha_inicio       = ?, 
+            fecha_migracion          = ?, 
+            fecha_modificacion = ?
+        WHERE ID = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
-            $fk_engine, $fk_tecnologia, $fk_dependencia, $fk_entidad, $fk_bus,
-            $fk_estatus, $fk_categoria, $avance, $version, $fecha_inicio, $migracion,
+            $fk_engine, $fk_version, $fk_dependencia, $fk_entidad, $fk_bus,
+            $fk_estado_bus, $fk_categoria, $avance, $fecha_inicio, $migracion,
             $fecha_modificacion, $id
         ]);
 
         registrarBitacora(
             $pdo,
             $_SESSION['usuario_id'],
-            'registro',
+            'REGISTRO',
             $id,
             'UPDATE',
-            "Actualizó registro: versión=$version, avance=$avance"
+            "Actualizó registro: versión=$fk_version, avance=$avance"
         );
 
     } else {
-        // Insertar nuevo registro
-        $sql = "INSERT INTO registro 
-        (Fk_Id_Engine, Fk_Id_Tecnologia, Fk_Id_Dependencia, Fk_Id_Entidad, Fk_Id_Bus, Fk_Id_Estatus, Fk_Id_Categoria, Avance, Version, Fecha_Inicio, Migracion, Fecha_Creacion, Fecha_Modificacion, Activo)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, 1)";
+        // Inserción
+        $sql = "INSERT INTO REGISTRO 
+        (Fk_engine, Fk_version, Fk_dependencia, Fk_entidad, Fk_bus, Fk_estado_bus, Fk_categoria, avance, fecha_inicio, fecha_migracion, fecha_creacion, fecha_modificacion, activo)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, 1)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
-            $fk_engine, $fk_tecnologia, $fk_dependencia, $fk_entidad, $fk_bus, $fk_estatus, $fk_categoria,
-            $avance, $version, $fecha_inicio, $migracion, $fecha_modificacion
+            $fk_engine, $fk_version, $fk_dependencia, $fk_entidad, $fk_bus,
+            $fk_estado_bus, $fk_categoria, $avance, $fecha_inicio, $fecha_migracion, $fecha_modificacion
         ]);
 
         $idInsertado = $pdo->lastInsertId();
         registrarBitacora(
             $pdo,
             $_SESSION['usuario_id'],
-            'registro',
+            'REGISTRO',
             $idInsertado,
             'INSERT',
-            "Creó nuevo registro: versión=$version, avance=$avance"
+            "Creó nuevo registro: versión=$fk_version, avance=$avance"
         );
-
-
     }
 
-    header("Location: ../public/registros.php");
-    exit;
+        echo "ok";
+        exit;
+
 }
-?>

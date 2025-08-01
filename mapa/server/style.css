@@ -1,3 +1,24 @@
+/* Teléfonos */
+@media (max-width: 600px) {
+  /* ajustes móviles */
+}
+
+/* Tablets */
+@media (max-width: 1024px) {
+  /* ajustes tablets */
+}
+
+/* Pantallas pequeñas horizontales */
+@media (max-height: 500px) {
+  /* ajustes especiales */
+}
+
+
+.navbar {
+    z-index: 1000 !important;
+}
+
+
 body {
   font-family: Arial, sans-serif;
 background: url(fondo2.png) center center / contain, linear-gradient(244deg, #ffffff 0%, #ffffff 50%, #c7c7c7 100%)
@@ -14,14 +35,46 @@ html, body {
 .contenedor {
   display: flex;
   padding-left: 60px;
-  height: calc(110vh - 56px);
+  min-height: calc(100vh - 56px);
+  height: auto;
+  container-type: inline-size;
+  container-name: estado-container;
+  flex-wrap: wrap; /* por si se apilan */
 }
+
+
+.contenedor-mapa {
+  display: flex;
+  align-items: center;        /* Alinea verticalmente */
+  gap: 2rem;                  /* Espacio entre mapa e info */
+  flex-wrap: wrap;            /* Para que se acomode en móvil */
+
+}
+
+
+.contenedor-mapa-general {
+  display: flex;
+  justify-content: center;    /* Centra horizontalmente */
+    flex-wrap: wrap;
+}
+
+
+#mapa, #info {
+  flex: 1;
+  min-height: 400px;
+  height: 100%;
+  max-width: 100%;
+}
+
+
 
 #mapa {
   flex: 2;    /* toma 2 partes */
   display: flex;
   justify-content: center;
   align-items: center;
+      padding-top: 110px;
+    padding-left: 51px;
 
 }
 
@@ -29,6 +82,28 @@ html, body {
   flex: 1;    /* toma 1 parte */
   padding: 60px;
   border-left: 1px solid #ccc;
+}
+
+
+@media (max-width: 768px), (max-height: 500px)  {
+  .contenedor {
+    flex-direction: column;
+    padding-top: 68px;
+    padding-left: 0px;
+  }
+
+  .info {
+  border-left: none;
+  }
+
+  .mapa,
+  .info {
+    flex: none;
+    height: 50%;
+  }
+  .mapa {
+    overflow: auto;
+  }
 }
 
 
@@ -174,4 +249,99 @@ html, body {
   width: 100% !important;
   padding: 0 !important;
   border: none !important;
+}
+
+@media (max-width: 768px), (max-height: 500px) {
+  #info-tablero h1 {
+    font-size: 24px;
+    padding: 0 10px;
+    margin: 20px 0;
+  }
+
+  .contenedor-dashboard {
+    flex-direction: column;
+    gap: 20px;
+    padding: 10px;
+    align-items: center;
+  }
+
+  .panel-produccion {
+    width: 100%;
+    padding: 20px 10px;
+  }
+
+  .cantidad-total {
+    font-size: 48px !important;
+  }
+
+  .tabla-articulos {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 0 10px;
+  }
+
+  .articulo img {
+    width: 80px;
+    height: 80px;
+  }
+
+  .cantidad-bus {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px), (max-height: 400px) {
+  .tabla-articulos {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .articulo img {
+    width: 70px;
+    height: 70px;
+  }
+
+  .cantidad-bus {
+    font-size: 16px;
+  }
+
+  .panel-produccion h1 {
+    font-size: 20px;
+  }
+}
+
+
+.modal-backdrop {
+  z-index: 1040 !important;
+}
+
+.modal {
+  z-index: 1060 !important;
+}
+
+    .articulo {
+  text-decoration: none;
+  color: inherit;
+}
+.articulo:hover {
+  opacity: 0.8;
+}
+
+.articulo img {
+transition: 1s ease;
+}
+
+.articulo img:hover {
+-webkit-transform: scale(1.2);
+-ms-transform: scale(1.2);
+transform: scale(1.2);
+transition: 1s ease;
+}
+
+.table td, .table th {
+  font-size: 0.75rem;
+  padding: 0.25rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 150px;
 }

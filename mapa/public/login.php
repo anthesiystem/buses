@@ -29,7 +29,7 @@ html, body {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  background: url(..//img/fondo2.png) center center / contain, linear-gradient(244deg, #ffffff 0%, #ffffff 50%, #c7c7c7 100%)
+  background: url(img/fondo2.png) center center / contain, linear-gradient(244deg, #ffffff 0%, #ffffff 50%, #c7c7c7 100%)
 }
 
 h4 {
@@ -166,7 +166,7 @@ input:focus {
   width: 220px;
   min-height: 100%;
   position: relative;
-  background-image: url("../img/login.jpg");
+  background-image: url("img/login.jpg");
   background-size: cover;
   border-top-left-radius: 4px;
   border-bottom-left-radius: 4px;
@@ -192,7 +192,7 @@ input:focus {
     </div>
     <form action="../server/validar.php" method="POST" class="log-in" autocomplete="off"> 
       <h4><span>Seguimiento de Buses</span></h4>
-      <div id="iconuser" style="margin: auto;"><img src="../img/iconuser.png" alt=""></div>
+      <div id="iconuser" style="margin: auto;"><img src="img/iconuser.png" alt=""></div>
 
     <?php if ($mensaje): ?>
       <div style="

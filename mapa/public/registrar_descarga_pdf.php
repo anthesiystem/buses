@@ -14,7 +14,7 @@ $usuario_nombre = $_SESSION['usuario'] ?? 'Desconocido';
 $descripcion = "El usuario $usuario_nombre descargó el PDF del estado $estado";
 
 $stmt = $pdo->prepare("
-    INSERT INTO bitacora (Fk_Id_Usuarios, Tabla_Afectada, Tipo_Accion, Descripcion, Fecha_Accion)
+    INSERT INTO bitacora (Fk_Usuarios, Tabla_Afectada, Tipo_Accion, Descripcion, Fecha_Accion)
     VALUES (?, 'pdf', 'DESCARGA', ?, NOW())
 ");
 $stmt->execute([$usuario_id, $descripcion]);
