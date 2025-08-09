@@ -3,10 +3,23 @@ session_start();
 
 // Mostrar mensaje si se viene de logout o error
 $mensaje = '';
+$tipoMensaje = 'error'; // 'error' o 'success'
+
 if (isset($_GET['error'])) {
-    $mensaje = 'Usuario o contraseña incorrectos.';
+    switch($_GET['error']) {
+        case '1':
+            $mensaje = 'Usuario o contraseña incorrectos.';
+            break;
+        case '2':
+            $mensaje = 'Por favor, complete todos los campos.';
+            break;
+        default:
+            $mensaje = 'Error al intentar iniciar sesión.';
+    }
+    $tipoMensaje = 'error';
 } elseif (isset($_GET['logout'])) {
     $mensaje = 'Sesión finalizada correctamente.';
+    $tipoMensaje = 'success';
 }
 ?>
 <!DOCTYPE html>
@@ -196,9 +209,9 @@ input:focus {
 
     <?php if ($mensaje): ?>
       <div style="
-        background: #f8d7da;
-        color: #842029;
-        border: 1px solid #f5c2c7;
+        background: <?php echo $tipoMensaje === 'error' ? '#f8d7da' : '#d4edda'; ?>;
+        color: <?php echo $tipoMensaje === 'error' ? '#842029' : '#155724'; ?>;
+        border: 1px solid <?php echo $tipoMensaje === 'error' ? '#f5c2c7' : '#c3e6cb'; ?>;
         padding: 10px;
         border-radius: 5px;
         margin-bottom: 20px;
@@ -206,7 +219,7 @@ input:focus {
         width: 100%;
         text-align: center;
       ">
-        <?= $mensaje ?>
+        <?= htmlspecialchars($mensaje) ?>
       </div>
     <?php endif; ?>
 
@@ -228,9 +241,18 @@ input:focus {
   document.querySelector('form').addEventListener('submit', function(e) {
     const usuario = document.getElementById('usuario').value.trim();
     const password = document.getElementById('password').value.trim();
+    
     if (!usuario || !password) {
-      alert('Por favor, llena todos los campos.');
       e.preventDefault();
+      window.location.href = 'login.php?error=2';
+      return;
+    }
+    
+    // Deshabilitar el botón de envío para prevenir múltiples submissions
+    const submitButton = this.querySelector('button[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Ingresando...';
     }
   });
 </script>

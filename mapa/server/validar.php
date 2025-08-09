@@ -11,22 +11,23 @@ if (isset($_POST['usuario']) && isset($_POST['password'])) {
     $password = $_POST['password'];
 
     try {
-        $stmt = $pdo->prepare("SELECT ID, cuenta, contrasena, nivel FROM usuario WHERE cuenta = ? ");
+        $stmt = $pdo->prepare("
+            SELECT u.ID, u.cuenta, u.contrasenia, u.nivel,
+                   p.nombre, p.apaterno, p.amaterno
+            FROM usuario u
+            INNER JOIN persona p ON u.Fk_persona = p.ID 
+            WHERE u.cuenta = ? AND u.activo = 1
+        ");
         $stmt->execute([$usuario]);
         $row = $stmt->fetch();
 
         if ($row) {
             // Comparar contraseñas (sin hash por ahora)
-
-            echo 'Input usuario: ' . $usuario . '<br>';
-            echo 'Input pass: ' . $password . '<br>';
-            echo 'DB pass: ' . $row['contrasena'] . '<br>';
-
-
-            if (trim($password) === trim($row['contrasena'])) {
+            if (trim($password) === trim($row['contrasenia'])) {
                 $_SESSION['usuario'] = $row['cuenta'];
                 $_SESSION['usuario_id'] = $row['ID'];
-                $_SESSION['fk_perfiles'] = $row['nivel']; // Aquí se asigna correctamente el nivel
+                $_SESSION['fk_perfiles'] = $row['nivel'];
+                $_SESSION['nombre_completo'] = $row['nombre'] . ' ' . $row['apaterno'] . ' ' . $row['amaterno'];
                 $_SESSION['ultima_actividad'] = time();
 
                 // Cargar permisos del usuario

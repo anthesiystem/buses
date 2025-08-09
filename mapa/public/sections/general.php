@@ -17,7 +17,7 @@
 
 <?php
 // Obtener todos los buses desde la BD, excepto VACIA
-$conexion = new mysqli("localhost", "admin", "admin1234", "busmap");
+$conexion = new mysqli("localhost", "admin", "admin1234", "buses");
 $catalogoBuses = [];
 $result = $conexion->query("SELECT Nombre FROM bus WHERE Nombre != 'VACIA'");
 while ($row = $result->fetch_assoc()) {

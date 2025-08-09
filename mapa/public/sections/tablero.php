@@ -1,13 +1,15 @@
 <?php
-include '../../server/config.php';
+require_once '../../server/config.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <title>Tablero</title>
-  <link rel="stylesheet" href="../server/style.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../server/style.css">
+  <!-- RUTA BASE GLOBAL -->
+  <base href="/final/mapa/public/">
 </head>
 <body>
 
@@ -17,97 +19,69 @@ include '../../server/config.php';
       <h1>DETALLE DE BUSES IMPLEMENTADOS</h1>
 
       <?php
-      $conexion = new mysqli("localhost", "admin", "admin1234", "busmap");
+      // Conexión directa (si no usas $pdo aquí)
+      $conexion = new mysqli("localhost", "admin", "admin1234", "buses");
       if ($conexion->connect_error) {
           die("Error de conexión: " . $conexion->connect_error);
       }
 
-      // Consulta principal categorizada por nombre del bus (descripcion)
-      $sql = "SELECT
-              CASE
-                WHEN b.descripcion LIKE 'RNAE%ARMAMENTO%' THEN 'rnae'
-                WHEN b.descripcion LIKE 'RNAE%EQUIPO%' THEN 'eo'
-                WHEN b.descripcion LIKE '911%' THEN '911'
-                WHEN b.descripcion LIKE 'CUP%' THEN 'cup'
-                WHEN b.descripcion LIKE 'RNL%' THEN 'rnl'
-                WHEN b.descripcion LIKE 'LPR%' THEN 'lpr'
-                WHEN b.descripcion LIKE 'MJ%' THEN 'mj'
-                WHEN b.descripcion LIKE 'RNIP%' THEN 'rnip'
-                WHEN b.descripcion LIKE 'VEH%' THEN 'vo'
-                WHEN b.descripcion LIKE 'VRyR%' THEN 'vryr'
-                ELSE 'otros'
-              END AS categoria,
-              COUNT(*) AS total
-              FROM REGISTRO r
-              INNER JOIN BUS b ON r.Fk_bus = b.ID
-              WHERE 
-                b.descripcion IS NOT NULL 
-                AND b.descripcion != '' 
-                AND b.descripcion NOT LIKE '%VACIA%'
-              GROUP BY categoria
-              HAVING categoria != 'otros'
-              ORDER BY categoria;";
+      // Buses activos
+      $sql_buses = "SELECT ID, descripcion, imagen FROM bus WHERE activo = 1 ORDER BY descripcion";
+      $res_buses = $conexion->query($sql_buses);
 
-      // Total general (sin buses VACÍA ni los intermedios de prueba, si aplica)
-      $sql_TOTAL = "
-        SELECT COUNT(Fk_bus) AS total
-        FROM REGISTRO
-        WHERE Fk_bus IS NOT NULL
-          AND Fk_bus != 1
-          AND Fk_bus NOT BETWEEN 3 AND 5;
-      ";
+      // Conteo por bus
+      $sql_registros = "SELECT Fk_bus, COUNT(*) AS total FROM registro WHERE Fk_bus IS NOT NULL GROUP BY Fk_bus";
+      $res_registros = $conexion->query($sql_registros);
 
-      $resultado_total = $conexion->query($sql_TOTAL);
-      $total = 0;
-      if ($resultado_total && $row = $resultado_total->fetch_assoc()) {
-        $total = $row['total'];
+      // Mapeo de conteo
+      $conteos = [];
+      while ($row = $res_registros->fetch_assoc()) {
+          $conteos[$row['Fk_bus']] = $row['total'];
       }
 
-      $resultado = $conexion->query($sql);
-
-      $categorias = ['vryr', 'rnl', 'rnip', 'mj', 'cup', '911', 'lpr', 'rnae', 'eo', 'vo'];
-      $datos = array_fill_keys($categorias, 0);
-      $totalGeneral = 0;
-
-      while ($fila = $resultado->fetch_assoc()) {
-          $cat = strtolower($fila['categoria']);
-          $count = intval($fila['total']);
-          if (array_key_exists($cat, $datos)) {
-              $datos[$cat] = $count;
-          }
-          $totalGeneral += $count;
-      }
-
-      $conexion->close();
+      // Total general
+      $sql_total = "SELECT COUNT(*) AS total FROM registro WHERE Fk_bus IS NOT NULL";
+      $res_total = $conexion->query($sql_total);
+      $total = ($res_total && $fila = $res_total->fetch_assoc()) ? $fila['total'] : 0;
       ?>
 
-      <!-- Tablero separado del resto -->
       <section class="zona-tablero">
         <div class="contenedor-dashboard">
 
-          <!-- Panel izquierdo -->
+          <!-- Producción -->
           <div class="panel-produccion">
             <h1><strong>PRODUCCIÓN</strong></h1>
-            <p class="cantidad-total"><?php echo $total; ?></p>
+            <p class="cantidad-total"><?= $total ?></p>
           </div>
 
-          <!-- Panel derecho -->
+          <!-- Buses -->
           <div class="tabla-articulos">
             <?php
-            foreach ($categorias as $cat) {
-                $nombre = strtoupper($cat);
-                $cantidad = $datos[$cat];
-                echo "
-                <a href='javascript:void(0)' class='articulo' onclick=\"cargarSeccion('sections/mapabus/{$cat}.php')\">
-                  <img src='icons/{$cat}.png' alt='{$nombre}'>
-                  <p class='cantidad-bus'>{$cantidad}</p>
-                </a>";
+            if ($res_buses) {
+              while ($bus = $res_buses->fetch_assoc()) {
+                $id = $bus['ID'];
+                $nombre = strtoupper($bus['descripcion']);
+
+                // Imagen con ruta desde raíz del proyecto (gracias al <base>)
+                $imagenBD = $bus['imagen'] ?: 'icons/default.png';
+                $soloNombre = basename($imagenBD);
+                $imagen = "icons/{$soloNombre}";
+
+                $cantidad = $conteos[$id] ?? 0;
+
+                echo '
+                  <a href="javascript:void(0)" class="articulo" onclick="cargarSeccion(\'sections/mapabus/' . $id . '.php\')">
+                    <img src="' . $imagen . '" alt="' . $nombre . '" onerror="this.src=\'icons/default.png\'">
+                    <p class="cantidad-bus">' . $cantidad . '</p>
+                  </a>';
+              }
             }
             ?>
           </div>
 
         </div>
       </section>
+
     </div>
   </div>
 </div>

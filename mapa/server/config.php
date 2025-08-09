@@ -1,6 +1,6 @@
 <?php
 $host = 'localhost';
-$db   = 'busmap';
+$db   = 'buses';
 $user = 'admin';
 $pass = 'admin1234';
 

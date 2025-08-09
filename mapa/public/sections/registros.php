@@ -32,11 +32,7 @@ $categorias   = obtenerCatalogo($pdo, 'categoria');
 
 
 <!-- En tu HTML -->
-<script src="../assets/js/registros/filtros.js"></script>
-<script src="../assets/js/registros/tabla.js"></script>
-<script src="../assets/js/registros/modal.js"></script>
-<script src="../assets/js/registros/catalogos.js"></script>
-<script src="../assets/js/registros/guardar.js"></script>
+
 
 
 
@@ -70,20 +66,7 @@ $categorias   = obtenerCatalogo($pdo, 'categoria');
   </div>
 </div>
 
-<!-- Catálogos disponibles para JS -->
-<script>
-  const catalogos = {
-    dependencia: <?= json_encode($dependencias) ?>,
-    entidad: <?= json_encode($entidades) ?>,
-    bus: <?= json_encode($buses) ?>,
-    motor_base: <?= json_encode($motor_bases) ?>,
-    version: <?= json_encode($versiones) ?>,
-    estado: <?= json_encode($estatuses) ?>,
-    categoria: <?= json_encode($categorias) ?>
-  };
-</script>
 
-<!-- Scripts JS modularizados -->
 
 
 <!-- Bootstrap -->
@@ -140,7 +123,28 @@ $categorias   = obtenerCatalogo($pdo, 'categoria');
   </div>
 </div>
 
+<!-- Catálogos disponibles para JS -->
+<!-- Catálogos disponibles para JS -->
+<script>
+  const catalogos = {
+    dependencia: <?= json_encode($dependencias) ?>,
+    entidad: <?= json_encode($entidades) ?>,
+    bus: <?= json_encode($buses) ?>,
+    motor_base: <?= json_encode($motor_bases) ?>,
+    version: <?= json_encode($versiones) ?>,
+    estado: <?= json_encode($estatuses) ?>,
+    categoria: <?= json_encode($categorias) ?>
+  };
+</script>
 
+<!-- Bootstrap -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Tu JS principal (al final) -->
+<script src="../assets/js/registros/main.js"></script>
+
+
+<!-- Scripts JS modularizados -->
 
 </body>
 </html>

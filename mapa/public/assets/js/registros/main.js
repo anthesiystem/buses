@@ -4,15 +4,16 @@ import { abrirModal, editar } from './modal.js';
 import { inicializarGuardado } from './guardar.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log("✅ Ejecutando setupFiltros...");
+  const form = document.getElementById('formRegistro');
+  console.log('✅ Ejecutando setup... form existe?', !!form);
 
   cargarCatalogos();
   setupFiltros();
   cargarRegistrosDesdeJSON();
   inicializarGuardado();
 
+  // expone funciones globales usadas por botones/HTML
   window.abrirModal = abrirModal;
   window.editar = editar;
   window.setupFiltros = setupFiltros;
-
 });

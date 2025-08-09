@@ -24,7 +24,7 @@
 
 
 <!-- Indicador de carga -->
-<div id="loader" class="text-center my-3 d-none">
+<div id="loaderTabla" class="text-center my-3 d-none">
   <div class="spinner-border text-primary" role="status"></div>
   <p class="mt-2">Cargando registros...</p>
 </div>

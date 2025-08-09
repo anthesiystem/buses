@@ -19,7 +19,7 @@ $id = (int) $_GET['id'];
 
 try {
     $stmt = $pdo->prepare("
-        SELECT u.ID, u.cuenta, u.contrasena, u.nivel 
+        SELECT u.ID, u.cuenta, u.contrasenia, u.nivel 
         FROM usuario u 
         WHERE u.ID = ? AND u.activo = 1
     ");

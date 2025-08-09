@@ -94,6 +94,13 @@ if (!isset($_SESSION['permisos']) && isset($_SESSION['usuario_id'])) {
       </button>
       <?php endif; ?>
 
+       <?php if ($nivel == 4 || tienePermiso('usuarios', 'READ')): ?>
+      <button onclick="cargarSeccion('sections/buses/buses.php')" class="btn-icon">
+        <img src="icons/usuarios.png" class="imgsdb" />
+        <span class="icon-label">Buses</span>
+      </button>
+      <?php endif; ?>
+
       <button onclick="location.href='logout.php'" class="mt-auto mb-3">
         <img src="icons/lg.png" class="imgsdb" />
       </button>
@@ -101,25 +108,30 @@ if (!isset($_SESSION['permisos']) && isset($_SESSION['usuario_id'])) {
 
     <div class="right">
       <h1>BUSES</h1>
-      <nav class="buttons">
-        <?php
-        $buses = [
-          'vryr' => 'VRYR', 'rnl' => 'RNL', 'rnip' => 'RNIP', 'mj' => 'MJ',
-          'cup' => 'CUP', '911' => '911', 'lpr' => 'LPR', 'rnae' => 'RNAE',
-          'eo' => 'EO', 'vo' => 'VO'
-        ];
-        foreach ($buses as $modulo => $label):
-          if ($nivel >= 3 || tienePermiso($modulo, 'READ')):
-        ?>
-          <button onclick="cargarSeccion('sections/mapabus/<?= $modulo ?>.php')">
-            <img src="icons/<?= $modulo ?>.png" class="imgsdb" />
-            <span><?= $label ?></span>
-          </button>
-        <?php
-          endif;
-        endforeach;
-        ?>
-      </nav>
+<nav class="buttons">
+ <?php
+require_once '../server/config.php';
+
+// Consulta de buses activos
+$stmt = $pdo->query("SELECT ID, descripcion, imagen FROM bus WHERE activo = 1 ORDER BY descripcion");
+$buses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($buses as $bus):
+  $modulo = strtolower(preg_replace('/\s+/', '', $bus['descripcion']));
+
+  if ($nivel >= 3 || tienePermiso($modulo, 'READ')):
+    $imagen = 'icons/' . (basename($bus['imagen']) ?: 'default.png');
+?>
+    <button onclick="cargarSeccion('sections/mapabus/mapa_bus.php?bus=<?= $bus['ID'] ?>')">
+      <img src="<?= $imagen ?>" class="imgsdb" onerror="this.src='icons/default.png'" />
+    </button>
+<?php
+  endif;
+endforeach;
+?>
+
+</nav>
+
     </div>
   </aside>
 
