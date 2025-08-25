@@ -1,0 +1,103 @@
+
+  #faseBar button.active { box-shadow: 0 0 0 .2rem rgba(178, 205, 193, 0.25); }
+  #faseBar img { filter: saturate(0.6); }
+  #faseBar button.active img { filter: saturate(1); }
+
+
+.progress-bar {
+  transition: width 0.6s ease !important;
+  height: 12px !important;
+}
+
+.progress my-2{
+height: 12px !important;
+overflow: visible !important;
+}
+
+.my-2 {
+    padding-bottom: 10px !important;
+}
+  .btn-outline-success {
+    --bs-btn-color: #73eeb5;
+    --bs-btn-border-color: #9ae6c3;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #b0fad8 !important;
+    --bs-btn-hover-border-color: #198754;
+    --bs-btn-focus-shadow-rgb: 25, 135, 84;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #17fe92ff !important;
+    --bs-btn-active-border-color: #17fe92ff;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #198754;
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: #198754;
+    --bs-gradient: none;
+  }
+
+  .vertical-timeline-item.respuesta .vertical-timeline-element-content {
+  margin-left: 130px; /* más sangría para respuestas */
+  background-color: #f0f2f5;
+  border-left: 4px solid #adb5bd;
+}
+
+
+
+    .vertical-timeline { width: 100%; position: relative; padding: 1.5rem 0 1rem; }
+    .vertical-timeline::before { content: ''; position: absolute; top: 0; left: 67px; height: 100%; width: 4px; background: #e9ecef; border-radius: .25rem; }
+    .vertical-timeline-element { position: relative; margin: 0 0 1rem; }
+    .vertical-timeline--animate .vertical-timeline-element-icon.bounce-in { visibility: visible; animation: cd-bounce-1 .8s; }
+    .vertical-timeline-element-icon { position: absolute; top: 0; left: 60px; }
+    .tl-dot { width: 18px; height: 18px; display: inline-block; border-radius: 50%; box-shadow: 0 0 0 5px #fff; }
+    .vertical-timeline-element-content {
+      position: relative;
+      margin-left: 90px;
+      font-size: .9rem;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: .5rem;
+      padding: .75rem .9rem;
+    }
+    .timeline-title { font-size: .9rem; font-weight: 600; }
+    .vertical-timeline-element-date { display: block; top: 0; padding-right: 10px; text-align: right; color: #adb5bd; font-size: .8rem; white-space: nowrap; }
+    @keyframes cd-bounce-1 { 0% { opacity: 0; transform: translateY(-20px); } 60% { opacity: 1; transform: translateY(0); } 100% { opacity: 1; } }
+ 
+ .vertical-timeline-item.respuesta .vertical-timeline-element-content {
+  background-color: #fff8e1;
+  border-left: 4px solid #ffc107;
+}
+
+#etapaBar button.active { box-shadow: 0 0 0 .2rem rgba(178, 205, 193, 0.25); }
+  #etapaBar img { filter: saturate(0.6); }
+  #etapaBar button.active img { filter: saturate(1); }
+
+  .progress-bar { transition: width 0.6s ease !important; height: 12px !important; }
+  .progress.my-2 { height: 10px !important; overflow: visible !important; }
+  .my-2 { padding-bottom: 10px !important; }
+
+  .vertical-timeline { width: 100%; position: relative; padding: 1.5rem 0 1rem; }
+  .vertical-timeline::before { content: ''; position: absolute; top: 0; left: 67px; height: 100%; width: 4px; background: #e9ecef; border-radius: .25rem; }
+  .vertical-timeline-element { position: relative; margin: 0 0 1rem; }
+  .vertical-timeline--animate .vertical-timeline-element-icon.bounce-in { visibility: visible; animation: cd-bounce-1 .8s; }
+  .vertical-timeline-element-icon { position: absolute; top: 0; left: 60px; }
+  .tl-dot { width: 18px; height: 18px; display: inline-block; border-radius: 50%; box-shadow: 0 0 0 5px #fff; }
+  .vertical-timeline-element-content { position: relative; margin-left: 90px; font-size: .9rem; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: .5rem; padding: .75rem .9rem; }
+  .timeline-title { font-size: .9rem; font-weight: 600; }
+  .vertical-timeline-element-date { display: block; top: 0; padding-right: 10px; text-align: right; color: #adb5bd; font-size: .8rem; white-space: nowrap; }
+  @keyframes cd-bounce-1 { 0% { opacity: 0; transform: translateY(-20px); } 60% { opacity: 1; transform: translateY(0); } 100% { opacity: 1; } }
+
+  .btn-outline-success {
+    --bs-btn-color: #73eeb5;
+    --bs-btn-border-color: #9ae6c3;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #b0fad8 !important;
+    --bs-btn-hover-border-color: #198754;
+    --bs-btn-focus-shadow-rgb: 25, 135, 84;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #17fe92ff !important;
+    --bs-btn-active-border-color: #17fe92ff;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #198754;
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: #198754;
+    --bs-gradient: none;
+  }

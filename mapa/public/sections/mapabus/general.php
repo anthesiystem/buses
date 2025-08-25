@@ -1,55 +1,27 @@
 <?php
-include '../../../server/auth.php';
+// ❌ si no hay permisos, comenta la línea de auth:
+# include '../../../server/auth.php';
 require_once '../../../server/config.php';
 ?>
-
 <head>
   <style>
     @media (max-width: 768px) {
-  .table thead {
-    display: none;
-  }
-
-  .tabla-responsive-fila {
-    display: block;
-    margin-bottom: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    padding: 0.5rem;
-  }
-
-  .tabla-responsive-fila td {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 12px;
-    position: relative;
-    border: none;
-    border-bottom: 1px solid #ddd;
-  }
-
-  .tabla-responsive-fila td::before {
-    content: attr(data-label);
-    font-weight: bold;
-    flex-basis: 40%;
-    color: #333;
-  }
-
-  .tabla-responsive-fila td:last-child {
-    border-bottom: none;
-  }
-}
-
+      .table thead { display:none; }
+      .tabla-responsive-fila{ display:block; margin-bottom:1rem; border:1px solid #ccc; border-radius:6px; padding:.5rem; }
+      .tabla-responsive-fila td{ display:flex; justify-content:space-between; padding:6px 12px; border:none; border-bottom:1px solid #ddd; }
+      .tabla-responsive-fila td::before{ content:attr(data-label); font-weight:bold; flex-basis:40%; color:#333; }
+      .tabla-responsive-fila td:last-child{ border-bottom:none; }
+    }
   </style>
+  <base href="/final/mapa/public/">
 </head>
 
-
 <div class="contenedor-mapa-general">
-  <!-- Mapa -->
-  <div id="mapa"">
+  <!-- ojo: sin comilla extra -->
+  <div id="mapa">
     <?php echo file_get_contents("../../../public/mapa.svg"); ?>
   </div>
 
-  <!-- Información del Estado -->
   <div id="info">
     <center>
       <h2 id="estadoNombre">Información del Estado</h2>
@@ -59,68 +31,49 @@ require_once '../../../server/config.php';
 </div>
 
 <?php
-// Obtener todos los buses desde la BD, excepto VACIA
 $catalogoBuses = [];
-$stmt = $pdo->query("SELECT descripcion  FROM bus WHERE descripcion  != 'VACIA'");
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    $catalogoBuses[] = $row['descripcion'];
-}
+$stmt = $pdo->query(" SELECT UPPER(TRIM(descripcion)) AS descripcion
+    FROM bus
+    WHERE activo = 1
+      AND descripcion <> 'VACIA'
+    ORDER BY ID");
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) $catalogoBuses[] = $row['descripcion'];
 ?>
 
-<!-- Script del mapa con configuración -->
+<!-- primero el mapa de claves de estados -->
+<script src="/final/mapa/server/mapag/estadomap.js"></script>
+
+<!-- script principal con endpoints bien puestos -->
 <script
   id="mapaScript"
-  src="/mapa/server/mapag/mapageneral.js"
+  src="/final/mapa/server/mapag/mapageneral.js?v=1"
   data-color-concluido="#95e039"
   data-color-sin-ejecutar="gray"
   data-color-otro="#de4f33"
-  data-catalogo-buses='<?php echo json_encode($catalogoBuses); ?>'>
+  data-url-datos="/final/mapa/server/mapag/generalindex.php"
+  data-url-detalle="/final/mapa/server/mapag/detalle.php"
+  data-catalogo-buses='<?= json_encode($catalogoBuses, JSON_UNESCAPED_UNICODE) ?>'>
 </script>
 
-<!-- Scripts de apoyo -->
-<script src="/mapa/server/mapag/estadoMap.js"></script>
-
+<!-- (opcional) repintar leyenda una vez que exista -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  const interval = setInterval(() => {
-    const rectConcluido = document.getElementById("legendConcluido");
-    const rectPruebas = document.getElementById("legendPruebas");
-    const rectSinEjecutar = document.getElementById("legendSinEjecutar");
-
-    if (rectConcluido && rectPruebas && rectSinEjecutar) {
-      rectConcluido.setAttribute("fill", "#95e039");
-      rectPruebas.setAttribute("fill", "#de4f33");
-      rectSinEjecutar.setAttribute("fill", "gray");
-
-      clearInterval(interval);
-    }
-  }, 200);
-});
-</script>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  setTimeout(() => {
+  const iv = setInterval(() => {
     const a = document.getElementById("legendConcluido");
     const b = document.getElementById("legendPruebas");
     const c = document.getElementById("legendSinEjecutar");
-
-    console.log("🧪 Verificando leyendas:");
-    console.log("legendConcluido:", a);
-    console.log("legendPruebas:", b);
-    console.log("legendSinEjecutar:", c);
-
     if (a) a.setAttribute("fill", "#95e039");
     if (b) b.setAttribute("fill", "#de4f33");
     if (c) c.setAttribute("fill", "gray");
-  }, 500); // espera medio segundo para asegurar que el mapa esté
+    if (a && b && c) clearInterval(iv);
+  }, 120);
 });
 </script>
 
-<!-- PDF generación -->
+<!-- PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-<script>
-  window.jsPDF = window.jspdf.jsPDF; // 🔁 Esto es lo que te falta
-</script>
-<script src="/mapa/server/generar_pdf.js"></script>
+<script>window.jsPDF = window.jspdf.jsPDF;</script>
+<script src="/final/mapa/server/generar_pdf.js"></script>
+

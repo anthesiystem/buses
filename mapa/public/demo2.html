@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Maqueta · Modal Split (light) · Stepper + Progreso</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+:root{
+  /* Colores etapa (referencia) */
+  --etapa-kit:#a6a6a6; --etapa-conectividad:#ff0505; --etapa-base:#c0504d; --etapa-concepto:#ffc000;
+  --etapa-unitarias:#202231; --etapa-masivas:#2d7fcf; --etapa-produccion:#00b050; --etapa-implementado:#00ff73;
+
+  /* Stepper/Bar */
+  --blue: #1f3bb3;      /* paso actual */
+  --blue-2:#0d6efd;     /* pasos completados / fill barra */
+  --line : #cbd5e1;     /* línea punteada */
+}
+
+body{ background:#f6f7fb; }
+.shell{ max-width:1200px; margin:24px auto; background:#fff; border:1px solid #eee; border-radius:18px; box-shadow:0 10px 40px rgba(0,0,0,.06); overflow:hidden; }
+
+.header{ padding:16px 18px; border-bottom:1px solid #f1f2f5; background:linear-gradient(180deg,#fff 0,#fafcff 100%); }
+.header h5{ margin:0; font-weight:700; }
+.sub{ color:#6c757d; }
+
+/* Barra de progreso (2ª imagen) */
+.stagebar{
+  --value: 60%; /* <<< edita el % para la maqueta */
+  position:relative; height:14px; border-radius:999px; background:#e9ecef; overflow:visible;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.03);
+  margin-top:12px;
+}
+.stagebar .fill{
+  position:absolute; inset:0 auto 0 0; width:var(--value);
+  background: var(--blue-2); border-radius:999px;
+}
+.stagebar .label{
+  position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#fff; font-weight:800; font-size:.8rem;
+}
+.stagebar .dot{
+  position:absolute; top:50%; width:8px; height:8px; border-radius:50%;
+  transform:translate(-50%,-50%); background:#7c8da6; box-shadow:0 0 0 4px #fff;
+}
+.stagebar .dot.is-done{ background: var(--blue-2); }
+
+/* Layout 2 columnas */
+.layout{ display:grid; grid-template-columns: 360px 1fr; gap:18px; padding:18px; }
+@media (max-width: 992px){ .layout{ grid-template-columns: 1fr; } }
+
+/* Tarjetas suaves */
+.card-soft{ border:1px solid #edf0f3; border-radius:14px; box-shadow:0 6px 22px rgba(0,0,0,.05); background:#fcfeff; }
+.form-label{ font-weight:600; color:#495057; }
+.counter{ font-size:.8rem; color:#6c757d; }
+
+/* Banner etapa (solo lectura) */
+.etapa-banner{
+  --etapa-color:#ffc000; /* <<< color demo (CONCEPTO) */
+  display:flex; align-items:center; justify-content:space-between;
+  border-radius:12px; padding:10px 12px; margin-bottom:12px;
+  background: var(--etapa-color); color:#000;
+}
+.etapa-badge{ font-size:.7rem; letter-spacing:.06em; padding:2px 6px; border-radius:8px; background: rgba(0,0,0,.1); }
+
+/* Stepper (1ª imagen) */
+.stepper-wrap{ display:flex; align-items:center; gap:12px; }
+#btnAll{ border:1px solid #e5e7eb; background:#fff; color:#374151; padding:8px 12px; border-radius:10px; font-weight:600; }
+
+.stepper{ list-style:none; display:flex; align-items:center; gap:0; padding:0; margin:0; width:100%; }
+.stepper .step{ display:flex; align-items:center; min-width:0; }
+.stepper .step:not(:last-child){ flex:1 1 auto; }
+.stepper .step:not(:last-child)::after{
+  content:""; flex:1 1 auto; height:2px; border-bottom:2px dashed var(--line); margin:0 12px;
+}
+.stepper .node{
+  width:36px; height:36px; border-radius:10px; display:grid; place-items:center;
+  font-weight:700; color:#6b7280; background:#fff; border:2px solid var(--line);
+}
+.stepper .step.done   .node{ background:var(--blue-2); border-color:var(--blue-2); color:#fff; }
+.stepper .step.current .node{ background:var(--blue); border-color:var(--blue); color:#fff; box-shadow:0 6px 14px rgba(31,59,179,.35); }
+
+/* Timeline simple a la derecha */
+.timeline-wrap{ position:relative; padding-left:36px; }
+.timeline-wrap:before{ content:""; position:absolute; left:16px; top:0; bottom:0; width:3px; background:#eef1f4; border-radius:2px; }
+.t-item{ position:relative; margin-bottom:14px; }
+.t-dot{ position:absolute; left:16px; top:28px; width:14px; height:14px; border-radius:50%; background:#ced4da; box-shadow:0 0 0 4px #fff; }
+.t-card{ margin-left:24px; border:1px solid #edf0f3; padding:12px 14px; border-radius:12px; background:#fff; box-shadow:0 8px 16px rgba(0,0,0,.04); }
+.t-head{ display:flex; justify-content:space-between; gap:12px; font-weight:700; }
+.t-meta{ color:#6c757d; font-size:.84rem; text-align:right; }
+.badge-et{ border-radius:10px; font-weight:700; letter-spacing:.02em; }
+.et-3{ background:var(--etapa-base); color:#fff; } .et-4{ background:var(--etapa-concepto); color:#000; }
+
+.dot-danger{ background:#dc3545; } .dot-warning{ background:#ffc107; } .dot-success{ background:#198754; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- Encabezado con barra de progreso -->
+  <div class="header">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h5>Comentarios del registro <span class="text-secondary">#82</span></h5>
+        <div class="sub">BAJA CALIFORNIA · SPF · RNL (LICENCIAS) · Tec: IWAY</div>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm rounded-3">Cerrar</button>
+    </div>
+
+    <!-- Barra estilo imagen 2 -->
+    <div class="stagebar" style="--value: 60%;">
+      <div class="fill"></div>
+      <span class="label">60%</span>
+
+      <!-- 8 etapas (ajusta posiciones para tu número real de etapas) -->
+      <span class="dot is-done" style="left: 0%;"></span>
+      <span class="dot is-done" style="left: 14.2857%;"></span>
+      <span class="dot is-done" style="left: 28.5714%;"></span>
+      <span class="dot is-done" style="left: 42.8571%;"></span>
+      <span class="dot is-done" style="left: 57.1428%;"></span>
+      <span class="dot"         style="left: 71.4285%;"></span>
+      <span class="dot"         style="left: 85.7142%;"></span>
+      <span class="dot"         style="left:100%;"></span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- IZQUIERDA: Form con Banner de etapa -->
+    <div>
+      <form class="card-soft p-3">
+        <div class="etapa-banner">
+          <div class="d-flex align-items-center gap-2">
+            <span class="etapa-badge">ETAPA</span>
+            <strong>CONCEPTO</strong>
+          </div>
+          <small class="text-dark-50">60% de avance</small>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Encabezado</label>
+          <input type="text" class="form-control" maxlength="45" placeholder="Escribe un título">
+          <div class="d-flex justify-content-end"><small class="counter">0/45</small></div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Comentario</label>
+          <textarea class="form-control" rows="3" maxlength="500" placeholder="Detalle del comentario..."></textarea>
+          <div class="d-flex justify-content-end"><small class="counter">0/500</small></div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Etiqueta</label><br>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="badge bg-danger">URGENTE</span>
+            <span class="badge bg-warning text-dark">PRIORITARIO</span>
+            <span class="badge bg-primary">IMPORTANTE</span>
+            <span class="badge bg-secondary">DESFASADO</span>
+            <span class="badge bg-success">SEGUIMIENTO</span>
+          </div>
+        </div>
+
+        <div class="text-end mt-2">
+          <button class="btn btn-success px-4" type="button">Guardar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- DERECHA: Stepper + Timeline demo -->
+    <div>
+      <div class="card-soft p-3 mb-3">
+        <div class="stepper-wrap">
+          <button id="btnAll" type="button">Todos</button>
+          <ol class="stepper">
+            <!-- Marca visual: done / current / (vacío = pendiente) -->
+            <li class="step done">   <span class="node">1</span></li>
+            <li class="step current"><span class="node">2</span></li>
+            <li class="step">        <span class="node">3</span></li>
+            <li class="step">        <span class="node">4</span></li>
+            <li class="step">        <span class="node">5</span></li>
+            <li class="step">        <span class="node">6</span></li>
+            <li class="step">        <span class="node">7</span></li>
+            <li class="step">        <span class="node">8</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="timeline-wrap">
+        <div class="t-item">
+          <span class="t-dot dot-warning"></span>
+          <div class="t-card">
+            <div class="t-head">
+              <div>Se encontró usuario <span class="badge badge-et et-3 ms-1">BASE DE DATOS</span> <span class="badge bg-warning text-dark ms-1">PRIORITARIO</span></div>
+              <div class="t-meta">12/08/2025 17:32<br>admin</div>
+            </div>
+            <div class="mt-2 text-secondary">Detalle del hallazgo…</div>
+          </div>
+        </div>
+
+        <div class="t-item">
+          <span class="t-dot dot-danger"></span>
+          <div class="t-card">
+            <div class="t-head">
+              <div>Ajuste credenciales <span class="badge badge-et et-3 ms-1">BASE DE DATOS</span> <span class="badge bg-danger ms-1">URGENTE</span></div>
+              <div class="t-meta">12/08/2025 17:26<br>admin</div>
+            </div>
+            <div class="mt-2 text-secondary">Actualizar permisos…</div>
+          </div>
+        </div>
+
+        <div class="t-item">
+          <span class="t-dot dot-success"></span>
+          <div class="t-card">
+            <div class="t-head">
+              <div>Mock de interfaz <span class="badge badge-et et-4 ms-1">CONCEPTO</span> <span class="badge bg-success ms-1">SEGUIMIENTO</span></div>
+              <div class="t-meta">12/08/2025 16:10<br>carla</div>
+            </div>
+            <div class="mt-2 text-secondary">Prototipo para validar campos…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /layout -->
+</div><!-- /shell -->
+
+</body>
+</html>

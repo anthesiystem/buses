@@ -203,80 +203,75 @@ for (let i = 0; i < catalogoCompleto.length; i += 2) {
 
 
   // ░░░ NUEVA PÁGINA CON FORMATO HORIZONTAL ░░░
+// ░░ PÁGINA HORIZONTAL ░░
 const plantillaHorizontal = await safeToBase64('/mapa/public/img/hojaplantillahorizontal.jpg');
 
-// Página horizontal para resumen de registros
-doc.addPage('letter', 'landscape');
+// 📌 Ojo: en jsPDF 2.x la firma correcta es:
+doc.addPage('letter', 'l');   // 'l' = landscape (también vale 'landscape')
 
-const pageWidthH = doc.internal.pageSize.getWidth();
-const pageHeightH = doc.internal.pageSize.getHeight();
+// Encabezados
+const headers = [[
+  "CATEGORÍA","ENGINE","TECNOLOGÍA","DEPENDENCIA","ENTIDAD",
+  "BUS","VERSIÓN","INICIO","MIGRACIÓN","ESTATUS","AVANCE"
+]];
 
-const headers = [["CATEGORÍA", "ENGINE", "TECNOLOGÍA", "DEPENDENCIA", "ENTIDAD", "BUS", "VERSIÓN", "INICIO", "MIGRACIÓN", "ESTATUS", "AVANCE"]];
+// Construir filas
 const rows = [];
-
 document.querySelectorAll("#modalDetalles table tbody tr").forEach(tr => {
-  const tds = tr.querySelectorAll("td");
-  const row = [
-    tds[0]?.innerText.trim() || "",
-    tds[1]?.innerText.trim() || "",
-    tds[2]?.innerText.trim() || "",
-    tds[3]?.innerText.trim() || "",
-    tds[4]?.innerText.trim() || "",
-    tds[5]?.innerText.trim() || "",
-    tds[6]?.innerText.trim() || "",
-    tds[7]?.innerText.trim() || "",
-    tds[8]?.innerText.trim() || "",
-    tds[9]?.innerText.trim() || "",
-    tds[10]?.innerText.trim() || ""
-  ];
-  rows.push(row);
+  const t = tr.querySelectorAll("td");
+  rows.push([
+    t[0]?.innerText.trim() || "",
+    t[1]?.innerText.trim() || "",
+    t[2]?.innerText.trim() || "",
+    t[3]?.innerText.trim() || "",
+    t[4]?.innerText.trim() || "",
+    t[5]?.innerText.trim() || "",
+    t[6]?.innerText.trim() || "",
+    t[7]?.innerText.trim() || "",
+    t[8]?.innerText.trim() || "",
+    t[9]?.innerText.trim() || "",
+    t[10]?.innerText.trim() || ""
+  ]);
 });
 
-// Título de sección
-doc.setFontSize(14);
-doc.setFont('helvetica', 'bold');
-doc.text("Resumen de Registros", pageWidthH / 2, 20, { align: 'center' });
-console.log("Registros totales:", rows.length);
-
-// Agrega la tabla paginable
+// Tabla
 doc.autoTable({
   head: headers,
   body: rows,
+  startY: 120,
+  margin: { top: 80, bottom: 40, left: 20, right: 20 },
+  styles: { fontSize: 8, halign: 'center' },
+  headStyles: { fillColor: [155, 34, 71], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+  alternateRowStyles: { fillColor: [245, 245, 245] },
   showHead: 'everyPage',
-  startY: 100,
-  margin: { top: 100, bottom: 60, left: 20, right: 20 },
-  styles: {
-    fontSize: 8,
-    halign: 'center'
-  },
-  headStyles: {
-    fillColor: [155, 34, 71],
-    fontStyle: 'bold'
-  },
-  alternateRowStyles: {
-    fillColor: [245, 245, 245]
-  },
-  pageBreak: 'auto',
-  willDrawCell: function (data) {
-    // Fondo antes de dibujar celdas
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
- 
+  theme: 'grid',
 
-    if (data.row.index === 0 && data.column.index === 0 && plantillaHorizontal) {
-      doc.addImage(plantillaHorizontal, 'PNG', 0, 0, pageWidth, pageHeight);
+  // Dibuja la PLANTILLA debajo de la tabla en cada página
+  willDrawCell: function (data) {
+    if (data.row.section === 'head' && data.row.index === 0 && data.column.index === 0) {
+      if (plantillaHorizontal) {
+        doc.addImage(
+          plantillaHorizontal,
+          'JPEG',    // pon 'JPEG' si tu archivo es .jpg/.jpeg
+          0, 0,
+          doc.internal.pageSize.getWidth(),
+          doc.internal.pageSize.getHeight()
+        );
+      }
+      // Título (repite si hay salto de página)
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text("Resumen de Registros", doc.internal.pageSize.getWidth() / 2, 50, { align: 'center' });
     }
   },
+
   didDrawPage: function (data) {
-    // Pie de página al final de cada página
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    
-    const fecha = new Date().toLocaleDateString("es-MX");
+    // Pie de página
+    const fechaHoy = new Date().toLocaleDateString("es-MX");
     doc.setFontSize(9);
     doc.setTextColor(0);
-    doc.text(fecha, pageWidth - 80, pageHeight - 30);
-    doc.text(`Página ${data.pageNumber}`, 30, pageHeight - 30);
+    doc.text(fechaHoy, doc.internal.pageSize.getWidth() - 80, doc.internal.pageSize.getHeight() - 25);
+    doc.text(`Página ${data.pageNumber}`, 30, doc.internal.pageSize.getHeight() - 25);
   }
 });
 
@@ -289,7 +284,16 @@ doc.autoTable({
 
 
 
-  doc.save(`reporte_${estado}_${fecha.replaceAll('/', '-')}.pdf`);
+// Finalmente descarga
+doc.save(`reporte_${estado}_${fecha.replaceAll('/', '-')}.pdf`);
+
+
+
+
+
+
+
+
 
   // Registrar en la bitácora
       fetch('./registrar_descarga_pdf.php', {

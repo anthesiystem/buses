@@ -1,0 +1,40 @@
+<div class="dashboard">
+  <div class="row">
+    <!-- Indicadores -->
+    <div class="col card">✅ Concluidos: 145</div>
+    <div class="col card">🟡 Pruebas: 62</div>
+    <div class="col card">⚪ Sin ejecutar: 38</div>
+    <div class="col card">⏳ Promedio: 4.5 meses</div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-6">
+      <canvas id="graficaBarras"></canvas>
+    </div>
+    <div class="col-6">
+      <canvas id="graficaTorta"></canvas>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <div id="mapaCalor"></div>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <table class="table table-striped text-center">
+      <thead>
+        <tr>
+          <th>Entidad</th><th>#Buses</th>
+          <th>Concluido</th><th>Pruebas</th><th>Sin ejecutar</th>
+          <th>Avance Promedio</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>CDMX</td><td>12</td><td>8</td><td>3</td><td>1</td><td>82%</td></tr>
+        <tr><td>Jalisco</td><td>9</td><td>6</td><td>2</td><td>1</td><td>74%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

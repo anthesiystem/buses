@@ -4,6 +4,8 @@ require_once __DIR__ . '/../config.php';
 $estado = $_GET['estado'] ?? '';
 $estado = trim($estado);
 
+function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
 $sql = "
 SELECT 
     r.Fk_motor_base,
@@ -12,37 +14,37 @@ SELECT
     r.Fk_bus,
     r.Fk_estado_bus,
     r.Fk_categoria,
-    r.Fk_version,
+    r.Fk_tecnologia,
+    r.Fk_etapa,
     r.fecha_inicio,
     r.fecha_migracion,
-    r.avance,
     r.fecha_creacion,
 
-    b.descripcion AS bus_nombre,
+    b.descripcion  AS bus_nombre,
     eb.descripcion AS estado_nombre,
-    v.descripcion AS version,
-    t.descripcion AS tecnologia,
+    t.numero_version AS version,          -- ✔ viene de tecnologia
+    t.descripcion   AS tecnologia,        -- ✔ viene de tecnologia
     d.descripcion AS dependencia,
     e.descripcion AS entidad,
     c.descripcion AS categoria,
-    en.descripcion AS motor_base_nombre
-
+    en.descripcion AS motor_base_nombre,
+    et.descripcion AS etapa,
+    et.avance      AS avance              -- ✔ porcentaje desde etapa
 FROM registro r
-INNER JOIN entidad e       ON e.ID = r.Fk_entidad
-INNER JOIN estado_bus eb   ON eb.ID = r.Fk_estado_bus
-INNER JOIN bus b           ON b.ID = r.Fk_bus
-LEFT JOIN version v        ON v.ID = r.Fk_version
-LEFT JOIN tecnologia t     ON v.Fk_tecnologia = t.ID
-LEFT JOIN dependencia d    ON r.Fk_dependencia = d.ID
-LEFT JOIN categoria c      ON c.ID = r.Fk_categoria
-LEFT JOIN motor_base en    ON en.ID = r.Fk_motor_base
-
-WHERE e.descripcion = :estado
-
-ORDER BY FIELD(c.descripcion, 'Productivos', 'Centrales', 'Migraciones', 'Pruebas', 'PRUEBAS-MIGRADOS'),
+INNER JOIN entidad     e  ON e.ID  = r.Fk_entidad
+INNER JOIN estado_bus  eb ON eb.ID = r.Fk_estado_bus
+LEFT  JOIN bus         b  ON b.ID  = r.Fk_bus 
+                         AND b.activo = 1           -- 🔹 sólo buses activos
+LEFT  JOIN dependencia d  ON d.ID  = r.Fk_dependencia
+INNER JOIN categoria   c  ON c.ID  = r.Fk_categoria
+INNER JOIN motor_base  en ON en.ID = r.Fk_motor_base
+INNER JOIN tecnologia  t  ON t.ID  = r.Fk_tecnologia
+LEFT  JOIN etapa       et ON et.ID = r.Fk_etapa
+WHERE UPPER(TRIM(e.descripcion)) = UPPER(TRIM(:estado))
+  AND r.activo = 1                                -- 🔹 sólo registros activos
+ORDER BY FIELD(c.descripcion, 'Productivos','Centrales','Migraciones','Pruebas','PRUEBAS-MIGRADOS'),
          c.descripcion,
-         b.descripcion;
-
+         b.descripcion
 ";
 
 $stmt = $pdo->prepare($sql);
@@ -54,8 +56,8 @@ $registros = [];
 $total = 0;
 
 foreach ($rows as $row) {
-    $categoria = ucfirst(strtolower($row['categoria'] ?? 'Otro'));
-    $registros[$categoria][] = $row;
+    $cat = ucfirst(strtolower($row['categoria'] ?? 'Otro'));
+    $registros[$cat][] = $row;
     $total++;
 }
 
@@ -64,45 +66,47 @@ echo '<button class="btn btn-outline-dark btn-sm float-end" data-bs-toggle="moda
 echo "<h3><strong>TOTAL DE BUSES:</strong> $total</h3>";
 
 $colores = [
-    'Productivos' => '#d4edda',
-    'Centrales' => '#d1ecf1',
-    'Migraciones' => '#fff3cd',
-    'Pruebas' => '#f8d7da',
-    'Otro' => '#f5f5f5'
+  'Productivos' => '#d4edda',
+  'Centrales'   => '#d1ecf1',
+  'Migraciones' => '#fff3cd',
+  'Pruebas'     => '#f8d7da',
+  'Otro'        => '#f5f5f5'
 ];
 
-$orden = ['Productivos', 'Centrales', 'Migraciones', 'Pruebas'];
+$orden = ['Productivos','Centrales','Migraciones','Pruebas'];
 
 echo "<div class='table-responsive mt-4'>";
 echo "<table class='table table-bordered table-sm align-middle text-center'>";
 echo "<thead class='table-dark'><tr><th>CATEGORÍA</th><th>BUS</th><th>VERSIÓN</th><th>ESTATUS</th><th>AVANCE</th></tr></thead><tbody>";
 
 foreach ($orden as $cat) {
-    if (!isset($registros[$cat])) continue;
-    foreach ($registros[$cat] as $row) {
-        $bg = $colores[$cat] ?? '#ffffff';
-        echo "<tr style='background-color: $bg'>
-            <td><strong>$cat</strong></td>
-            <td>{$row['bus_nombre']}</td>
-            <td>{$row['version']}</td>
-            <td>{$row['estado_nombre']}</td>
-            <td>{$row['avance']}%</td>
-        </tr>";
-    }
+  if (!isset($registros[$cat])) continue;
+  foreach ($registros[$cat] as $row) {
+    $bg = $colores[$cat] ?? '#ffffff';
+    $ver = trim(($row['version'] ?? '').''); // numero_version
+    echo "<tr style='background-color: $bg'>
+      <td><strong>".h($cat)."</strong></td>
+      <td>".h($row['bus_nombre'])."</td>
+      <td>".h($ver)."</td>
+      <td>".h($row['estado_nombre'])."</td>
+      <td>".(int)($row['avance'] ?? 0)."%</td>
+    </tr>";
+  }
 }
 
 foreach ($registros as $cat => $filas) {
-    if (in_array($cat, $orden)) continue;
-    foreach ($filas as $row) {
-        $bg = $colores['Otro'];
-        echo "<tr style='background-color: $bg'>
-            <td><strong>$cat</strong></td>
-            <td>{$row['bus_nombre']}</td>
-            <td>{$row['version']}</td>
-            <td>{$row['estado_nombre']}</td>
-            <td>{$row['avance']}%</td>
-        </tr>";
-    }
+  if (in_array($cat, $orden)) continue;
+  foreach ($filas as $row) {
+    $bg = $colores['Otro'];
+    $ver = trim(($row['version'] ?? '').'');
+    echo "<tr style='background-color: $bg'>
+      <td><strong>".h($cat)."</strong></td>
+      <td>".h($row['bus_nombre'])."</td>
+      <td>".h($ver)."</td>
+      <td>".h($row['estado_nombre'])."</td>
+      <td>".(int)($row['avance'] ?? 0)."%</td>
+    </tr>";
+  }
 }
 echo "</tbody></table></div>";
 ?>
@@ -122,7 +126,7 @@ echo "</tbody></table></div>";
             <thead class="table-dark text-center">
               <tr>
                 <th>CATEGORÍA</th>
-                <th>ENGINE</th>
+                <th>MOTOR BASE</th>
                 <th>TECNOLOGÍA</th>
                 <th>DEPENDENCIA</th>
                 <th>ENTIDAD</th>
@@ -138,17 +142,17 @@ echo "</tbody></table></div>";
               <?php foreach ($registros as $grupo): ?>
                 <?php foreach ($grupo as $row): ?>
                   <tr>
-                    <td><?= $row['categoria'] ?></td>
-                    <td><?= $row['motor_base_nombre'] ?></td>
-                    <td><?= $row['tecnologia'] ?></td>
-                    <td><?= $row['dependencia'] ?></td>
-                    <td><?= $row['entidad'] ?></td>
-                    <td><?= $row['bus_nombre'] ?></td>
-                    <td><?= $row['version'] ?></td>
-                    <td><?= $row['fecha_inicio'] ?></td>
-                    <td><?= $row['fecha_migracion'] ?></td>
-                    <td><?= $row['estado_nombre'] ?></td>
-                    <td><?= $row['avance'] ?>%</td>
+                    <td><?= h($row['categoria']) ?></td>
+                    <td><?= h($row['motor_base_nombre']) ?></td>
+                    <td><?= h($row['tecnologia']) ?></td>
+                    <td><?= h($row['dependencia']) ?></td>
+                    <td><?= h($row['entidad']) ?></td>
+                    <td><?= h($row['bus_nombre']) ?></td>
+                    <td><?= h($row['version']) ?></td>
+                    <td><?= h($row['fecha_inicio']) ?></td>
+                    <td><?= h($row['fecha_migracion']) ?></td>
+                    <td><?= h($row['estado_nombre']) ?></td>
+                    <td><?= (int)($row['avance'] ?? 0) ?>%</td>
                   </tr>
                 <?php endforeach ?>
               <?php endforeach ?>

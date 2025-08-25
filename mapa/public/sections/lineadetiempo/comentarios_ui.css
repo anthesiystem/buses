@@ -1,0 +1,65 @@
+/* /mapa/public/sections/lineadetiempo/comentarios_ui.css */
+
+/* Barra de progreso tipo “pill” */
+.stagebar{
+  --value: 0%;
+  --bar-bg: #e0e0e0;
+  --bar-fill: #198754;
+  --bar-text: #ffffff;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--bar-bg);
+  overflow: hidden;
+}
+.fill{
+    color: #161616 !important;
+}
+.stagebar .fill{
+  height: 100%;
+  width: var(--value);
+  background: var(--bar-fill);
+  color: #ffffff var(--bar-text);
+  font-weight: 600;
+  display:flex; align-items:center; justify-content:center;
+  transition: width .5s ease;
+}
+
+/* Stepper con iconos */
+.stepper-wrap{ display:flex; align-items:center; gap:12px; }
+#btnAll{ border:1px solid #e5e7eb; background:#fff; color:#374151; padding:8px 12px; border-radius:10px; font-weight:600; }
+
+.stepper{ list-style:none; display:flex; align-items:center; gap:0; padding:0; margin:0; width:100%; }
+.stepper .step{ display:flex; align-items:center; min-width:0; cursor:pointer; }
+.stepper .step:not(:last-child){ flex:1 1 auto; }
+.stepper .step:not(:last-child)::after{
+  content:""; flex:1 1 auto; height:2px; border-bottom:2px dashed #8b9db4; margin:0 12px;
+}
+.stepper .node{
+  width:38px; height:38px; border-radius:10px; display:grid; place-items:center;
+  background:#ffffff; border:2px solid #8b9db4;
+  transition: all .15s ease;
+}
+.stepper .node img{
+  width:22px; height:22px; object-fit:contain; filter: grayscale(1) opacity(.7);
+}
+.stepper .step.done .node{
+  background:#46bb70; border-color:#0dfd1b;
+}
+.stepper .step.done .node img{ filter: brightness(0) invert(1); }
+.stepper .step.current .node{
+  background:#00ac07; border-color:#17c90c; box-shadow:0 6px 14px rgba(64, 198, 35,.35);
+}
+.stepper .step.current .node img{ filter: brightness(0) invert(1); }
+
+/* Timeline puntos */
+.dot-danger{ background:#dc3545; } .dot-warning{ background:#ffc107; }
+.dot-success{ background:#198754; } .dot-primary{ background:#0d6efd; } .dot-secondary{ background:#6c757d; }
+
+
+#formComentario{
+ background-color: #f8f8f8;
+}
+
+.dot {
+        top: 40%;
+}

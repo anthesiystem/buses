@@ -16,10 +16,55 @@
           </div>
 
           <div class="col-md-6">
-            <label for="imagen" class="form-label">Imagen (.png, .jpg)</label>
-            <input type="file" class="form-control" id="imagen" name="imagen" accept=".png,.jpg,.jpeg">
-            <small class="text-muted">Se guardará en /icons/</small>
+  <label for="imagen" class="form-label">Imagen (PNG/JPG)</label>
+  <input type="file" class="form-control" id="imagen" name="imagen" accept="image/png, image/jpeg">
+  <small class="text-muted">Se guardará en /icons/ – debe ser max 228px ancho x 235px de alto.</small>
           </div>
+
+            <script>
+            (() => {
+              const input = document.getElementById('imagen');
+              if (!input) return;
+
+              const REQ_W = 228, REQ_H = 235;
+              const MAX_BYTES = 150 * 1024; // 150 KB (ajusta si quieres)
+
+              input.addEventListener('change', e => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                if (!/^image\/(png|jpeg)$/.test(file.type)) {
+                  alert('Solo se permiten PNG o JPG.');
+                  input.value = '';
+                  return;
+                }
+                if (file.size > MAX_BYTES) {
+                  alert('La imagen excede 150 KB.');
+                  input.value = '';
+                  return;
+                }
+
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                  const w = img.naturalWidth, h = img.naturalHeight;
+                  if (w !== REQ_W || h !== REQ_H) {
+                    alert(`La imagen es ${w}×${h}. Debe ser ${REQ_W}×${REQ_H}.`);
+                    input.value = '';
+                  }
+                  URL.revokeObjectURL(url);
+                };
+                img.onerror = () => {
+                  alert('Archivo no válido.');
+                  input.value = '';
+                  URL.revokeObjectURL(url);
+                };
+                img.src = url;
+              });
+            })();
+            </script>
+
+         
 
           <div class="col-md-4">
             <label for="color_implementado" class="form-label">Color Implementado</label>

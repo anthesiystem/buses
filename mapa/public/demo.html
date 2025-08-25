@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Preview · Modal Comentarios (light) · Variantes de ETAPA</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap 5 + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    :root{
+      /* Colores de ETAPA (según tu tabla) */
+      --etapa-kit:#a6a6a6;
+      --etapa-conectividad:#ff0505;
+      --etapa-base-de-datos:#c0504d;
+      --etapa-concepto:#ffc000;
+      --etapa-pruebas-unitarias:#202231;
+      --etapa-pruebas-masivas:#2d7fcf;
+      --etapa-produccion:#00b050;
+      --etapa-implementado:#00ff73;
+
+      --card-bg: #ffffff;
+      --muted: #6c757d;
+      --line: #e9ecef;
+    }
+
+    body{ background: #f6f7fb; }
+
+    .modal-frame{
+      max-width: 1100px;
+      margin: 40px auto;
+      background: var(--card-bg);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.08);
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,.06);
+    }
+
+    .header-compact{
+      padding: 16px 20px 10px;
+      border-bottom: 1px solid #f0f1f4;
+      background: linear-gradient(180deg,#ffffff 0%,#fafbff 100%);
+    }
+    .header-compact h5{ margin:0; font-weight:700; }
+    .subtext{ color: var(--muted); font-size:.92rem; }
+
+    .progress-slim{ height:10px; background:#eef1f5; }
+
+    /* Toolbar de etapas */
+    #etapaBar{
+      gap:.5rem;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+    #etapaBar .btn{
+      border-radius: 10px;
+      border-color: #b5e3cf;
+      background:#f5fffb;
+      transition: transform .12s ease;
+    }
+    #etapaBar .btn.active{ box-shadow: 0 0 0 .2rem rgba(13,110,253,.08); transform: translateY(-1px); }
+    #etapaBar img{ filter:saturate(.6); }
+    #etapaBar .btn.active img{ filter:saturate(1); }
+    .toolbar-wrap{ padding:16px; border-bottom:1px solid #f0f1f4; }
+
+    /* Form card */
+    .card-soft{
+      border: 1px solid #edf0f3 !important;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.04);
+      background: #fcfdff;
+    }
+    .form-label{ font-weight:600; color:#4a4f5a; }
+    .counter{ color:var(--muted); font-size:.8rem; }
+
+    /* Timeline */
+    .vtl{ position: relative; padding: 24px 0 8px; }
+    .vtl::before{ content:""; position:absolute; top:0; left:60px; bottom:0; width:3px; background:var(--line); border-radius:2px; }
+    .vtl-item{ position:relative; margin:0 0 14px; }
+    .vtl-icon{ position:absolute; left:52px; top:8px; width:18px; height:18px; border-radius:50%; background:#ced4da; box-shadow:0 0 0 5px #fff; }
+    .vtl-card{ margin-left: 100px; border:1px solid #edf0f3; background:#fff; border-radius:12px; padding:12px 14px; box-shadow: 0 6px 18px rgba(0,0,0,.03); }
+    .title-line{ font-weight:700; font-size: .98rem; }
+    .badge-etapa{ border-radius: 10px; font-weight:700; letter-spacing:.02em; }
+    .meta{ color:var(--muted); font-size:.82rem; text-align:right; }
+
+    .dot-danger{ background:#dc3545; }
+    .dot-warning{ background:#ffc107; }
+    .dot-primary{ background:#0d6efd; }
+    .dot-secondary{ background:#6c757d; }
+    .dot-success{ background:#198754; }
+
+    /* Helpers por etapa */
+    .et-1{ background: var(--etapa-kit); color:#000; }
+    .et-2{ background: var(--etapa-conectividad); color:#fff; }
+    .et-3{ background: var(--etapa-base-de-datos); color:#fff; }
+    .et-4{ background: var(--etapa-concepto); color:#000; }
+    .et-5{ background: var(--etapa-pruebas-unitarias); color:#fff; }
+    .et-6{ background: var(--etapa-pruebas-masivas); color:#fff; }
+    .et-7{ background: var(--etapa-produccion); color:#fff; }
+    .et-8{ background: var(--etapa-implementado); color:#000; }
+
+    /* ========= Variantes de ETAPA en el formulario ========= */
+    /* 1) BANNER */
+    .etapa-banner{
+      border-radius: 12px; padding:10px 12px; margin-bottom:12px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .etapa-badge{ font-size:.7rem; letter-spacing:.06em; padding:2px 6px; border-radius:8px;
+      background: rgba(0,0,0,.08); color: inherit; }
+
+    /* 2) RIBBON */
+    .ribbon-wrap{ position:relative; }
+    .ribbon{
+      position:absolute; top:12px; right:-14px; padding:6px 18px; font-weight:700;
+      transform: rotate(3deg); border-radius:10px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.12);
+      color:#000;
+    }
+
+    /* 3) SIDE RAIL */
+    .side-rail{ position:relative; overflow:hidden; }
+    .side-rail::before{
+      content:""; position:absolute; left:0; top:0; bottom:0; width:8px;
+      background: var(--etapa-concepto);
+      border-top-left-radius:12px; border-bottom-left-radius:12px;
+    }
+    .rail-chip{
+      position:absolute; top:10px; left:14px; font-size:.8rem; font-weight:700;
+      padding:4px 10px; border-radius:10px;
+      background: var(--etapa-concepto); color:#000;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="modal-frame">
+    <!-- Header -->
+    <div class="header-compact">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h5>Comentarios del registro <span class="text-secondary">#82</span></h5>
+          <div class="subtext">
+            BAJA CALIFORNIA · SERVICIO DE PROTECCIÓN FEDERAL · RNL (LICENCIAS) · Tec: IWAY
+          </div>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm rounded-3"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="progress progress-slim mt-3">
+        <div class="progress-bar bg-primary" style="width:60%"></div>
+      </div>
+      <small class="text-muted">Avance de etapas: 60%</small>
+    </div>
+
+    <!-- Toolbar de etapas -->
+    <div class="toolbar-wrap">
+      <div id="etapaBar" class="d-flex">
+        <button class="btn btn-sm btn-outline-secondary active" data-etapa-id="__ALL__">
+          <i class="bi bi-list"></i> Todos
+        </button>
+        <button class="btn btn-sm btn-outline-success" data-etapa-id="1" title="KIT">
+          <img src="https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/box.svg" width="24" height="24" alt="">
+        </button>
+        <button class="btn btn-sm btn-outline-success" data-etapa-id="2" title="CONECTIVIDAD">
+          <img src="https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/world.svg" width="24" height="24" alt="">
+        </button>
+        <button class="btn btn-sm btn-outline-success active" data-etapa-id="3" title="BASE DE DATOS">
+          <img src="https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/database.svg" width="24" height="24" alt="">
+        </button>
+        <button class="btn btn-sm btn-outline-success" data-etapa-id="4" title="CONCEPTO">
+          <img src="https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/lightbulb.svg" width="24" height="24" alt="">
+        </button>
+        <button class="btn btn-sm btn-outline-success" data-etapa-id="5" title="PRUEBAS UNITARIAS">
+          <img src="https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/wrench.svg" width="24" height="24" alt="">
+        </button>
+        <button class="btn btn-sm btn-outline-success" data-etapa-id="6" title="PRUEBAS MASIVAS">
+          <img src="https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/rocket.svg" width="24" height="24" alt="">
+        </button>
+        <button class="btn btn-sm btn-outline-success" data-etapa-id="7" title="PRODUCCIÓN">
+          <img src="https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/gear.svg" width="24" height="24" alt="">
+        </button>
+        <button class="btn btn-sm btn-outline-success" data-etapa-id="8" title="IMPLEMENTADO">
+          <img src="https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/checkup-list.svg" width="24" height="24" alt="">
+        </button>
+      </div>
+    </div>
+
+    <!-- Variantes del formulario (light) -->
+    <div class="p-3">
+      <h6 class="text-muted mb-3">Variantes de visualización de <strong>Etapa</strong> (modo claro)</h6>
+
+      <div class="row g-3">
+        <!-- 1) BANNER -->
+        <div class="col-12">
+          <form class="card card-soft border-0">
+            <div class="card-body">
+              <div class="etapa-banner" style="background: var(--etapa-concepto); color:#000;">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="etapa-badge">ETAPA</span>
+                  <strong>CONCEPTO</strong>
+                </div>
+                <small class="text-dark-50">60% de avance</small>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Encabezado</label>
+                <input type="text" class="form-control" maxlength="45" data-max="45" placeholder="Título corto">
+                <div class="d-flex justify-content-end"><small class="counter">0/45</small></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Comentario</label>
+                <textarea class="form-control" rows="3" maxlength="500" data-max="500" placeholder="Escribe el detalle..."></textarea>
+                <div class="d-flex justify-content-end"><small class="counter">0/500</small></div>
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label">Etiqueta</label>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <span class="badge bg-danger">URGENTE</span>
+                  <span class="badge bg-warning text-dark">PRIORITARIO</span>
+                  <span class="badge bg-primary">IMPORTANTE</span>
+                  <span class="badge bg-secondary">DESFASADO</span>
+                  <span class="badge bg-success">SEGUIMIENTO</span>
+                </div>
+              </div>
+
+              <div class="text-end mt-2"><button type="button" class="btn btn-success px-4">Guardar</button></div>
+            </div>
+          </form>
+        </div>
+
+       
+        
+
+    <!-- Timeline de ejemplo (para mantener el contexto visual) -->
+    <div class="px-3 pb-4">
+      <div id="listaComentarios" class="vtl">
+        <div class="vtl-item tl-item" data-etapa-id="3">
+          <span class="vtl-icon dot-warning"></span>
+          <div class="vtl-card">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="title-line">
+                Se encontró usuario
+                <span class="badge badge-etapa et-3 ms-1">BASE DE DATOS</span>
+                <span class="badge bg-warning text-dark ms-1">PRIORITARIO</span>
+              </div>
+              <div class="meta">12/08/2025 17:32<br>admin</div>
+            </div>
+            <div class="mt-2 text-secondary">Detalle del hallazgo y pasos a seguir…</div>
+          </div>
+        </div>
+        <div class="vtl-item tl-item" data-etapa-id="4">
+          <span class="vtl-icon dot-success"></span>
+          <div class="vtl-card">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="title-line">
+                Mock de interfaz
+                <span class="badge badge-etapa et-4 ms-1">CONCEPTO</span>
+                <span class="badge bg-success ms-1">SEGUIMIENTO</span>
+              </div>
+              <div class="meta">12/08/2025 16:10<br>carla</div>
+            </div>
+            <div class="mt-2 text-secondary">Se comparte prototipo para validar campos…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- JS: contadores simples (solo demo) -->
+  <script>
+    document.querySelectorAll('[data-max]').forEach(el=>{
+      const max = +el.dataset.max || 0;
+      const counter = el.closest('.mb-3').querySelector('.counter');
+      const update = () => { if (counter) counter.textContent = `${el.value.length}/${max}`; };
+      el.addEventListener('input', update); update();
+    });
+
+    // (Opcional) Filtro por etapa si quisieras probar aquí también
+    (function(){
+      const bar = document.getElementById('etapaBar');
+      bar.addEventListener('click', e=>{
+        const btn = e.target.closest('button[data-etapa-id]'); if(!btn) return;
+        bar.querySelectorAll('button').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+        const target = String(btn.dataset.etapaId);
+        document.querySelectorAll('#listaComentarios .tl-item').forEach(it=>{
+          const id = String(it.dataset.etapaId||'');
+          it.style.display = (target === '__ALL__' || id === target) ? '' : 'none';
+        });
+      });
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

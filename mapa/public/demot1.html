@@ -1,0 +1,84 @@
+<!-- PROPUESTA E -->
+<style>
+  .pbk{margin-bottom:18px}
+  .pbk h6{font-weight:800;color:#0f172a;margin-bottom:8px}
+  .tblx{width:100%;border-collapse:separate;border-spacing:0;border-radius:14px;overflow:hidden;box-shadow:0 8px 22px rgba(0,0,0,.06)}
+  .tblx thead th{background:linear-gradient(90deg,#0f172a,#1f2937);color:#fff;padding:9px 10px}
+  .tblx tbody td{padding:9px 10px;border-top:1px solid #eef2f7}
+  .tag{display:inline-block;padding:3px 8px;border-radius:6px;font-size:.78rem;font-weight:700;background:#f3f4f6}
+  .tag.ok{background:#dcfce7}
+  .tag.warn{background:#fef3c7}
+  .date{white-space:nowrap;font-variant-numeric:tabular-nums}
+  /* barra de progreso de fechas */
+  .timeline{min-width:180px}
+  .bar{height:8px;background:#e5e7eb;border-radius:999px;position:relative;overflow:hidden}
+  .bar > span{position:absolute;left:0;top:0;bottom:0;width:60%;background:#60a5fa} /* ancho demo */
+  .tl-labels{display:flex;justify-content:space-between;font-size:.72rem;color:#6b7280;margin-top:4px}
+</style>
+
+<div class="pbk">
+  <h6>MIGRACIONES (2)</h6>
+  <table class="tblx">
+    <thead>
+      <tr>
+        <th>Categoria</th><th>Engine</th><th>Tecnología</th><th>Dependencia</th>
+        <th>Entidad</th><th>Bus</th><th>Etapa</th><th>Progreso</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag">MIGRACIONES</span></td>
+        <td><span class="tag">POSTGRESQL</span></td>
+        <td><span class="tag warn">OTROS</span></td>
+        <td>POLICIA FEDERAL</td>
+        <td>CHIHUAHUA</td>
+        <td>MJ (MANDAMIENTOS)</td>
+        <td><span class="tag ok">PRODUCCIÓN</span></td>
+        <td class="timeline">
+          <div class="bar"><span style="width:85%"></span></div>
+          <div class="tl-labels"><span class="date">2025-01-15</span><span class="date">2025-01-30</span></div>
+        </td>
+      </tr>
+      <tr>
+        <td><span class="tag">MIGRACIONES</span></td>
+        <td><span class="tag">POSTGRESQL</span></td>
+        <td><span class="tag warn">DATA MIGRATOR</span></td>
+        <td>POLICIA FEDERAL</td>
+        <td>CHIHUAHUA</td>
+        <td>MJ (MANDAMIENTOS)</td>
+        <td><span class="tag">CONCEPTO</span></td>
+        <td class="timeline">
+          <div class="bar"><span style="width:35%"></span></div>
+          <div class="tl-labels"><span class="date">2025-02-17</span><span class="date">2025-03-17</span></div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="pbk">
+  <h6>NUEVOS (1)</h6>
+  <table class="tblx">
+    <thead>
+      <tr>
+        <th>Categoria</th><th>Engine</th><th>Tecnología</th><th>Dependencia</th>
+        <th>Entidad</th><th>Bus</th><th>Etapa</th><th>Progreso</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag">NUEVOS</span></td>
+        <td><span class="tag">POSTGRESQL</span></td>
+        <td><span class="tag warn">IWAY</span></td>
+        <td>POLICIA FEDERAL</td>
+        <td>CHIHUAHUA</td>
+        <td>MJ (MANDAMIENTOS)</td>
+        <td><span class="tag">CONCEPTO</span></td>
+        <td class="timeline">
+          <div class="bar"><span style="width:20%"></span></div>
+          <div class="tl-labels"><span class="date">2024-10-12</span><span class="date">2024-11-06</span></div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

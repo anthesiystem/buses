@@ -1,42 +1,45 @@
 <?php
-ini_set('session.gc_maxlifetime', 3600); // 1 hora de inactividad
-session_set_cookie_params(1800);         // 30 minutos para la cookie
-session_start();
+// /final/mapa/server/auth.php
+require_once __DIR__ . '/config.php';
 
-// Restaurar sesión si hay cookie (puedes eliminar esta sección si no usas cookies manuales)
-// Ejemplo simple (requiere token firmado en cookie)
-if (!isset($_SESSION['usuario']) && isset($_COOKIE['usuario'])) {
-    // Validar token o volver a consultar al usuario
-    $stmt = $pdo->prepare("SELECT ID, cuenta FROM usuario WHERE cuenta = ? AND activo = 1");
-    $stmt->execute([$_COOKIE['usuario']]);
-    $row = $stmt->fetch();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+  $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+  session_set_cookie_params([
+    'lifetime' => 3600,       // 1 hora
+    'path'     => '/',
+    'domain'   => '',
+    'secure'   => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax',
+  ]);
+  session_start();
+}
 
-    if ($row && $row['ID'] == $_COOKIE['usuario_id']) {
-        $_SESSION['usuario'] = $row['cuenta'];
-        $_SESSION['usuario_id'] = $row['ID'];
-        $_SESSION['ultima_actividad'] = time();
+// URL absoluta del login (ajústala si es otra)
+const LOGIN_URL = '/final/mapa/public/login.php';
+
+function is_logged_in() {
+  return isset($_SESSION['usuario']) && isset($_SESSION['usuario']['ID']);
+}
+
+function require_login_or_redirect() {
+  // Inactividad (1h)
+  if (isset($_SESSION['ultima_actividad']) && (time() - $_SESSION['ultima_actividad'] > 3600)) {
+    // limpiar sesión
+    $_SESSION = [];
+    if (ini_get("session.use_cookies")) {
+      $p = session_get_cookie_params();
+      setcookie(session_name(), '', time() - 42000, $p["path"], $p["domain"], $p["secure"], $p["httponly"]);
     }
-}
-
-
-// Verificar si el usuario está autenticado
-if (!isset($_SESSION['usuario']) || !isset($_SESSION['usuario_id'])) {
-    header("Location: ../public/login.php");
-    exit();
-}
-
-// Verificar tiempo de inactividad
-if (isset($_SESSION['ultima_actividad']) && (time() - $_SESSION['ultima_actividad'] > 3600)) {
-    session_unset();
     session_destroy();
+    header("Location: " . LOGIN_URL);
+    exit;
+  }
 
-    setcookie("usuario", "", time() - 3600, "/");
-    setcookie("usuario_id", "", time() - 3600, "/");
-
-    header("Location: ../public/login.php");
-    exit();
+  if (!is_logged_in()) {
+    header("Location: " . LOGIN_URL);
+    exit;
+  }
+  // refresca actividad
+  $_SESSION['ultima_actividad'] = time();
 }
-
-// Actualizar tiempo de actividad
-$_SESSION['ultima_actividad'] = time();
-?>

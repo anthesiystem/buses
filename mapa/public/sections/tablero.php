@@ -30,7 +30,7 @@ require_once '../../server/config.php';
       $res_buses = $conexion->query($sql_buses);
 
       // Conteo por bus
-      $sql_registros = "SELECT Fk_bus, COUNT(*) AS total FROM registro WHERE Fk_bus IS NOT NULL GROUP BY Fk_bus";
+      $sql_registros = "SELECT Fk_bus, COUNT(*) AS total FROM registro WHERE activo = 1 and Fk_bus IS NOT NULL GROUP BY Fk_bus";
       $res_registros = $conexion->query($sql_registros);
 
       // Mapeo de conteo
@@ -40,7 +40,7 @@ require_once '../../server/config.php';
       }
 
       // Total general
-      $sql_total = "SELECT COUNT(*) AS total FROM registro WHERE Fk_bus IS NOT NULL";
+      $sql_total = "SELECT COUNT(*) AS total FROM registro WHERE activo = 1 and Fk_bus IS NOT NULL";
       $res_total = $conexion->query($sql_total);
       $total = ($res_total && $fila = $res_total->fetch_assoc()) ? $fila['total'] : 0;
       ?>
@@ -56,27 +56,33 @@ require_once '../../server/config.php';
 
           <!-- Buses -->
           <div class="tabla-articulos">
-            <?php
-            if ($res_buses) {
-              while ($bus = $res_buses->fetch_assoc()) {
-                $id = $bus['ID'];
-                $nombre = strtoupper($bus['descripcion']);
+           <?php
+if ($res_buses) {
+  while ($bus = $res_buses->fetch_assoc()) {
+    $id      = (int)$bus['ID'];
+    $nombre  = strtoupper($bus['descripcion'] ?? '');
 
-                // Imagen con ruta desde raíz del proyecto (gracias al <base>)
-                $imagenBD = $bus['imagen'] ?: 'icons/default.png';
-                $soloNombre = basename($imagenBD);
-                $imagen = "icons/{$soloNombre}";
+    // Normaliza la imagen (soporta rutas con \ o /) y usa default si viene vacía
+    $imagenBD   = $bus['imagen'] ?? '';
+    $soloNombre = basename(str_replace('\\', '/', $imagenBD));
+    if ($soloNombre === '') $soloNombre = 'default.png';
+    $imagen     = "icons/{$soloNombre}";
 
-                $cantidad = $conteos[$id] ?? 0;
+    $cantidad = $conteos[$id] ?? 0;
 
-                echo '
-                  <a href="javascript:void(0)" class="articulo" onclick="cargarSeccion(\'sections/mapabus/' . $id . '.php\')">
-                    <img src="' . $imagen . '" alt="' . $nombre . '" onerror="this.src=\'icons/default.png\'">
-                    <p class="cantidad-bus">' . $cantidad . '</p>
-                  </a>';
-              }
-            }
-            ?>
+    // Ruta correcta a la vista del bus
+    $ruta = 'sections/mapabus/mapa_bus.php?bus=' . $id;
+
+    echo '
+      <a href="javascript:void(0)" class="articulo" onclick="cargarSeccion(\'' . $ruta . '\')">
+        <img src="' . $imagen . '" alt="' . htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') . '"
+             onerror="this.onerror=null;this.src=\'icons/default.png\'">
+        <p class="cantidad-bus">' . $cantidad . '</p>
+      </a>';
+  }
+}
+?>
+
           </div>
 
         </div>

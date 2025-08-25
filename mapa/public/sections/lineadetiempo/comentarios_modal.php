@@ -1,293 +1,262 @@
 <?php
+// /mapa/public/sections/lineadetiempo/comentarios_modal.php
 session_start();
 require_once '../../../server/config.php';
+require_once __DIR__ . '/helpers.php';
 
 $idRegistro = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($idRegistro <= 0) {
-  echo '<div class="modal-content"><div class="modal-body">ID inválido.</div></div>';
-  exit;
+  echo '<div class="modal-content"><div class="modal-body">ID inválido.</div></div>'; exit;
 }
 
-// Datos del registro
-$reg = $pdo->prepare("
-  SELECT r.ID, r.Fk_fase_actual, e.descripcion AS Entidad, d.descripcion AS Dependencia, b.descripcion AS Bus,
-         v.descripcion AS Version, r.avance, r.fecha_inicio, r.fecha_migracion
+/* ===== Registro + etapa actual ===== */
+$qReg = $pdo->prepare("
+  SELECT r.ID, r.Fk_etapa,
+         e.descripcion AS Entidad, d.descripcion AS Dependencia,
+         b.descripcion AS Bus, t.descripcion AS Tecnologia,
+         et.descripcion AS EtapaActual, et.avance AS AvanceActual
   FROM registro r
-  LEFT JOIN entidad e ON e.ID = r.Fk_entidad
+  LEFT JOIN entidad    e  ON e.ID = r.Fk_entidad
   LEFT JOIN dependencia d ON d.ID = r.Fk_dependencia
-  LEFT JOIN bus b ON b.ID = r.Fk_bus
-  LEFT JOIN version v ON v.ID = r.Fk_version
+  LEFT JOIN bus        b  ON b.ID = r.Fk_bus
+  LEFT JOIN tecnologia t  ON t.ID = r.Fk_tecnologia
+  LEFT JOIN etapa      et ON et.ID = r.Fk_etapa
   WHERE r.ID = ?
 ");
-$reg->execute([$idRegistro]);
-$registro = $reg->fetch(PDO::FETCH_ASSOC);
-
-if (!$registro) {
-  echo '<div class="modal-content"><div class="modal-body">Registro no encontrado.</div></div>';
-  exit;
+$qReg->execute([$idRegistro]);
+$reg = $qReg->fetch(PDO::FETCH_ASSOC);
+if (!$reg) {
+  echo '<div class="modal-content"><div class="modal-body">Registro no encontrado.</div></div>'; exit;
 }
 
-// Fases desde tabla fase
-$fases = $pdo->query("SELECT ID, nombre, orden FROM fase ORDER BY orden")->fetchAll(PDO::FETCH_ASSOC);
-$totFases = count($fases);
-$ordenActual = 0;
-if (!empty($registro['Fk_fase_actual'])) {
-  $ordenActual = (int)$pdo->query("SELECT orden FROM fase WHERE ID = ".(int)$registro['Fk_fase_actual'])->fetchColumn();
-}
-$porc = $totFases > 0 ? round(($ordenActual / $totFases) * 100) : 0;
+/* ===== Etapas (stepper & puntos) ===== */
+$etapas = $pdo->query("SELECT ID, descripcion, orden, avance FROM etapa ORDER BY orden")->fetchAll(PDO::FETCH_ASSOC);
+$totalEtapas   = max(1, count($etapas));
+$etapaActualId = (int)($reg['Fk_etapa'] ?? 0);
+$etapaActualTx = (string)($reg['EtapaActual'] ?? '');
+$ordenActual   = 0;                    // orden de la etapa actual
+$porc          = (int)($reg['AvanceActual'] ?? 0); // % directo de etapa.avance si existe
 
-// Comentarios
-$stmt = $pdo->prepare("
-  SELECT cr.ID, cr.encabezado, cr.comentario, cr.fecha_creacion,
-         u.cuenta AS usuario, cr.color, cr.fase
-  FROM comentario_registro cr
-  INNER JOIN usuario u ON u.ID = cr.Fk_usuario
-  WHERE cr.Fk_registro = ? AND cr.activo = 1
-  ORDER BY cr.fecha_creacion DESC
-");
-$stmt->execute([$idRegistro]);
-$comentarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Convertir color a clase de Bootstrap
-function bgClassFromDb(?string $color): string {
-  $c = strtolower(trim((string)$color));
-  if (str_starts_with($c, 'badge-')) $c = str_replace('badge-', 'bg-', $c);
-  return match ($c) {
-    'rojo', 'bg-danger'      => 'bg-danger',
-    'amarillo', 'bg-warning' => 'bg-warning',
-    'verde', 'bg-success'    => 'bg-success',
-    'azul', 'bg-primary'     => 'bg-primary',
-    default                  => 'bg-primary',
-  };
-}
-?>
-
-<style>
-  #faseBar button.active { box-shadow: 0 0 0 .2rem rgba(178, 205, 193, 0.25); }
-  #faseBar img { filter: saturate(0.6); }
-  #faseBar button.active img { filter: saturate(1); }
-
-
-.progress-bar {
-  transition: width 0.6s ease !important;
-  height: 12px !important;
-}
-
-.progress my-2{
-height: 12px !important;
-overflow: visible !important;
-}
-
-.my-2 {
-    padding-bottom: 10px !important;
-}
-  .btn-outline-success {
-    --bs-btn-color: #73eeb5;
-    --bs-btn-border-color: #9ae6c3;
-    --bs-btn-hover-color: #fff;
-    --bs-btn-hover-bg: #b0fad8 !important;
-    --bs-btn-hover-border-color: #198754;
-    --bs-btn-focus-shadow-rgb: 25, 135, 84;
-    --bs-btn-active-color: #fff;
-    --bs-btn-active-bg: #17fe92ff !important;
-    --bs-btn-active-border-color: #17fe92ff;
-    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
-    --bs-btn-disabled-color: #198754;
-    --bs-btn-disabled-bg: transparent;
-    --bs-btn-disabled-border-color: #198754;
-    --bs-gradient: none;
+foreach ($etapas as $e) {
+  if ((int)$e['ID'] === $etapaActualId) {
+    $ordenActual = (int)($e['orden'] ?? 0);
+    if (!$porc && isset($e['avance'])) $porc = (int)$e['avance'];
+    break;
   }
-</style>
+}
+if (!$porc) {
+  // Fallback: porcentaje por posición (si no hay 'avance' definido)
+  $porc = ($totalEtapas > 1 && $ordenActual > 0)
+    ? round((($ordenActual - 1) / ($totalEtapas - 1)) * 100)
+    : 0;
+}
 
-<div class="modal-header">
-  <h5 class="modal-title">
-    Comentarios del registro #<?= htmlspecialchars($idRegistro) ?>
-    <small class="text-muted d-block">
-      <?= htmlspecialchars($registro['Entidad'] ?? '') ?> •
-      <?= htmlspecialchars($registro['Dependencia'] ?? '') ?> •
-      <?= htmlspecialchars($registro['Bus'] ?? '') ?> •
-      Versión: <?= htmlspecialchars($registro['Version'] ?? '') ?> •
-      Avance: <?= (int)($registro['avance'] ?? 0) ?>%
-    </small>
-  </h5>
-  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-</div>
+$barFill = etapa_color_hex($etapaActualTx);
+$barTxt  = etapa_text_color($barFill);
 
-<div class="progress my-2" style="height: 10px;">
-  <div class="progress-bar" role="progressbar"
-       style="width: <?= $porc ?>%;" aria-valuenow="<?= $porc ?>"
-       aria-valuemin="0" aria-valuemax="100"></div>
-</div>
+/* ===== Comentarios ===== */
+$qC = $pdo->prepare("
+  SELECT c.ID, c.encabezado, c.comentario, c.color,
+         u.cuenta AS usuario, rc.fecha_enlace AS fecha,
+         e.descripcion AS etapa, rc.FK_etapa AS etapa_id
+  FROM registro_comentario rc
+  JOIN comentario c ON c.ID = rc.FK_comentario
+  JOIN usuario    u ON u.ID = c.FK_usuario
+  LEFT JOIN etapa e ON e.ID = rc.FK_etapa
+  WHERE rc.FK_registro = ? AND rc.Activo=b'1' AND c.activo=b'1'
+  ORDER BY rc.fecha_enlace DESC
+");
+$qC->execute([$idRegistro]);
+$comentarios = $qC->fetchAll(PDO::FETCH_ASSOC);
 
-<div class="bg-white border rounded p-3 mb-3">
-  <div class="d-flex gap-3 flex-wrap align-items-center" id="faseBar" style="justify-content: center;">
-    <button type="button" class="btn btn-sm btn-outline-secondary active" data-fase="__ALL__">Todos</button>
-   
-<?php foreach ($fases as $fase): 
-  $nombre = $fase['nombre'];
-  $activo = ($fase['ID'] == $registro['Fk_fase_actual']) ? 'active' : '';
+/* ===== Bases de URL ===== */
+$ltBase      = rtrim(dirname($_SERVER['PHP_SELF']), '/'); // carpeta del modal
+$defaultIcon = lt_default_icon_url();                      // default.png existente
 ?>
-  <button type="button" class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 <?= $activo ?>" data-fase="<?= htmlspecialchars($nombre) ?>">
-    <img src="/mapa/public/icons/<?= strtolower(str_replace(' ', '_', $nombre)) ?>.png" alt="<?= htmlspecialchars($nombre) ?>" width="36" height="36">
-  </button>
-<?php endforeach; ?>
+<link rel="stylesheet" href="<?= h($ltBase) ?>/comentarios_ui.css">
+<script>window.LT_BASE = <?= json_encode($ltBase, JSON_UNESCAPED_SLASHES) ?>;</script>
 
+<div class="modal-content">
+  <div class="header p-3 border-bottom">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h5 class="m-0">Comentarios del registro <span class="text-secondary">#<?= (int)$idRegistro ?></span></h5>
+        <div class="text-muted small">
+          <?= h($reg['Entidad'] ?? '') ?> · <?= h($reg['Dependencia'] ?? '') ?> · <?= h($reg['Bus'] ?? '') ?> · Tec: <?= h($reg['Tecnologia'] ?? '') ?>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-3" data-bs-dismiss="modal">Cerrar</button>
+    </div>
+
+    <!-- Barra de progreso -->
+    <div class="stagebar mt-2" style="--value: <?= (int)$porc ?>%; --bar-fill: <?= h($barFill) ?>; --bar-text: <?= h($barTxt) ?>;">
+      <div class="fill"><?= (int)$porc ?>%</div>
+    </div>
   </div>
-</div>
 
+  <div class="layout" style="display:grid; grid-template-columns: 360px 1fr; gap:18px; padding:18px;">
+    <!-- ===== Formulario ===== -->
+      <div class="col-left">
+    <div>
+      <form id="formComentario" class="card border-0 card-soft p-3" method="post" action="<?= h($ltBase) ?>/guardar_comentario.php" onsubmit="return window.guardarComentario?.(this) ?? true">
+        <input type="hidden" name="Fk_registro" value="<?= (int)$idRegistro ?>">
+        <input type="hidden" name="FK_etapa"    value="<?= (int)$etapaActualId ?>">
 
-<small class="text-muted" id="textoAvance">Avance de fases: <?= $porc ?>%</small>
+        <div class="d-flex align-items-center justify-content-between rounded-3 px-3 py-2 mb-3"
+             style="background: <?= h($barFill) ?>; color: <?= h($barTxt) ?>;">
+          <div class="d-flex gap-2 align-items-center">
+            <span class="badge rounded-pill" style="background: rgba(0,0,0,.12); color: <?= h($barTxt) ?>;">ETAPA</span>
+            <strong><?= h($etapaActualTx ?: 'Sin etapa') ?></strong>
+          </div>
+          <small><?= (int)$porc ?>% de avance</small>
+        </div>
 
+        <div class="mb-3">
+          <label class="form-label">Encabezado</label>
+          <input type="text" name="encabezado" class="form-control" maxlength="45" required>
+          <div class="d-flex justify-content-end"><small class="text-muted counter">0/45</small></div>
+        </div>
 
-<div class="modal-body">
-  <form id="formComentario" method="post" action="/mapa/public/sections/lineadetiempo/guardar_comentario.php" class="border rounded p-3 mb-3 bg-light">
-    <input type="hidden" name="Fk_registro" value="<?= (int)$idRegistro ?>">
-    <div class="row g-2">
-      <div class="col-md-4">
-        <label class="form-label">Encabezado</label>
-        <input type="text" name="encabezado" class="form-control" maxlength="500" required>
-      </div>
-      <div class="col-md-5">
-        <label class="form-label">Comentario</label>
-        <textarea name="comentario" class="form-control" rows="2" maxlength="500" required></textarea>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Fase</label>
-        <select name="fase" class="form-select" required>
-          <option value="">Seleccione...</option>
-          <?php foreach ($fases as $f): ?>
-            <option value="<?= htmlspecialchars($f['nombre']) ?>"><?= htmlspecialchars($f['nombre']) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Color del marcador</label>
-        <select name="color" class="form-select" required>
-          <option value="rojo">🔴 Rojo</option>
-          <option value="amarillo">🟡 Amarillo</option>
-          <option value="azul" selected>🔵 Azul</option>
-          <option value="verde">🟢 Verde</option>
-        </select>
-      </div>
-    </div>
-    <div class="text-end mt-2">
-      <button class="btn btn-success" type="submit">Guardar</button>
-    </div>
-  </form>
+        <div class="mb-3">
+          <label class="form-label">Comentario</label>
+          <textarea name="comentario" rows="3" maxlength="500" class="form-control" required></textarea>
+          <div class="d-flex justify-content-end"><small class="text-muted counter">0/500</small></div>
+        </div>
 
-  <div class="vertical-timeline vertical-timeline--animate vertical-timeline--one-column">
-    <?php if (!$comentarios): ?>
-      <div class="text-center text-muted py-4">Aún no hay comentarios.</div>
-    <?php else: ?>
-      <?php foreach ($comentarios as $c): ?>
-        <?php $bg = bgClassFromDb($c['color'] ?? null); ?>
-        <div class="vertical-timeline-item vertical-timeline-element tl-item" data-fase="<?= htmlspecialchars($c['fase'] ?? '') ?>">
-          <div>
-            <span class="vertical-timeline-element-icon bounce-in">
-              <span class="tl-dot <?= $bg ?>"></span>
-            </span>
-            <div class="vertical-timeline-element-content bounce-in">
-              <h6 class="timeline-title mb-1">
-                <?= htmlspecialchars($c['encabezado']) ?>
-                <?php if (!empty($c['fase'])): ?>
-                  <?php $badgeColor = bgClassFromDb($c['color'] ?? null); ?>
-                  <span class="badge <?= $badgeColor ?> text-light ms-2"><?= htmlspecialchars($c['fase']) ?></span>
-                <?php endif; ?>
+        <div class="mb-2">
+          <label class="form-label">Etiqueta</label><br>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <input class="btn-check" type="radio" name="color" id="etqUrgente"     value="urgente"     data-class="bg-danger"    data-label="URGENTE">
+            <label class="btn btn-outline-danger btn-sm" for="etqUrgente">URGENTE</label>
 
-              </h6>
-              <p class="mb-1"><?= nl2br(htmlspecialchars($c['comentario'])) ?></p>
-              <small class="vertical-timeline-element-date">
-                <?= date('d/m/Y H:i', strtotime($c['fecha_creacion'])) ?><br>
-                <?= htmlspecialchars($c['usuario']) ?>
-              </small>
-            </div>
+            <input class="btn-check" type="radio" name="color" id="etqPrioritario" value="prioritario" data-class="bg-warning"   data-label="PRIORITARIO">
+            <label class="btn btn-outline-warning btn-sm" for="etqPrioritario">PRIORITARIO</label>
+
+            <input class="btn-check" type="radio" name="color" id="etqImportante"  value="importante"  data-class="bg-primary"   data-label="IMPORTANTE">
+            <label class="btn btn-outline-primary btn-sm" for="etqImportante">IMPORTANTE</label>
+
+            <input class="btn-check" type="radio" name="color" id="etqDesfasado"   value="desfasado"   data-class="bg-secondary" data-label="DESFASADO">
+            <label class="btn btn-outline-secondary btn-sm" for="etqDesfasado">DESFASADO</label>
+
+            <input class="btn-check" type="radio" name="color" id="etqSeguimiento" value="seguimiento" data-class="bg-success"    data-label="SEGUIMIENTO" checked>
+            <label class="btn btn-outline-success btn-sm" for="etqSeguimiento">SEGUIMIENTO</label>
+
+            
           </div>
         </div>
-      <?php endforeach; ?>
-    <?php endif; ?>
+
+        <div class="text-end mt-2">
+          <button class="btn btn-success px-4" type="submit">Guardar</button>
+        </div>
+      </form>
+    </div></div>
+
+    <!-- ===== Stepper + Timeline ===== -->
+     <div class="col-right" style="display:flex; flex-direction:column; gap:12px;">
+    <?php
+      $publicIcons = lt_public_base_url() . '/icons';
+    ?>
+    <div class="card-soft p-3 mb-3">
+      <div class="stepper-wrap">
+        <button id="btnAll" type="button" title="Ver todas las etapas">Todos</button>
+        <ol id="barEtapas" class="stepper">
+          <?php foreach ($etapas as $e):
+            $isCurrent = ((int)$e['ID'] === (int)$etapaActualId);
+            $isDone    = ((int)($e['orden'] ?? 0) <= (int)$ordenActual);
+            $iconUrl   = etapa_icon_url((string)$e['descripcion']);
+          ?>
+            <li class="step <?= $isDone ? 'done' : '' ?> <?= $isCurrent ? 'current' : '' ?>"
+                data-id="<?= (int)$e['ID'] ?>" title="<?= h($e['descripcion']) ?>">
+              <span class="node">
+                <img src="<?= h($iconUrl) ?>" alt="<?= h($e['descripcion']) ?>"
+                     onerror="this.onerror=null;this.src='<?= h($defaultIcon) ?>'">
+              </span>
+            </li>
+          <?php endforeach; ?>
+        </ol>
+      </div>
+    </div>
+
+    <div class="timeline-wrap" id="listaComentarios" style="position:relative; padding-left:11px;">
+      <div style="content:''; position:absolute; left:16px; top:0; bottom:0; width:3px; background:#eef1f4; border-radius:2px;"></div>
+
+      <?php if (!$comentarios): ?>
+        <div class="text-muted text-center p-4">Aún no hay comentarios.</div>
+      <?php else: ?>
+        <?php foreach ($comentarios as $c): $dot = dotClassFromColor($c['color'] ?? ''); ?>
+          <div class="t-item tl-item" data-etapa-id="<?= (int)($c['etapa_id'] ?? 0) ?>" style="position:relative; margin-bottom:14px;">
+            <span class="t-dot <?= $dot ?>" style="position:absolute; top:50%; width:14px; height:14px; border-radius:50%; box-shadow:0 0 0 4px #fff;"></span>
+            <div class="t-card" style="margin-left:24px; border:1px solid #edf0f3; padding:12px 14px; border-radius:12px; background:#fff; box-shadow:0 8px 16px rgba(0,0,0,.04);">
+              <div class="d-flex justify-content-between gap-2 fw-bold">
+                <div>
+                  <?= h($c['encabezado'] ?? '') ?>
+                  <?php if (!empty($c['etapa'])):
+                    $cHex = etapa_color_hex($c['etapa']); $cTx = etapa_text_color($cHex); ?>
+                    <span class="badge ms-1" style="background:<?= h($cHex) ?>; color:<?= h($cTx) ?>; border-radius:10px;">
+                      <?= h($c['etapa']) ?>
+                    </span>
+                  <?php endif; ?>
+
+                  <?php
+                    $raw = strtolower((string)($c['color'] ?? ''));
+                    $labelMap = [
+                      'urgente' => 'URGENTE', 'bg-danger' => 'URGENTE', 'rojo' => 'URGENTE',
+                      'prioritario' => 'PRIORITARIO', 'bg-warning' => 'PRIORITARIO', 'amarillo' => 'PRIORITARIO',
+                      'importante' => 'IMPORTANTE', 'bg-primary' => 'IMPORTANTE', 'azul' => 'IMPORTANTE',
+                      'desfasado' => 'DESFASADO', 'bg-secondary' => 'DESFASADO', 'gris' => 'DESFASADO',
+                      'seguimiento' => 'SEGUIMIENTO', 'bg-success' => 'SEGUIMIENTO', 'verde' => 'SEGUIMIENTO',
+                    ];
+                    $classMap = [
+                      'urgente' => 'bg-danger', 'bg-danger' => 'bg-danger', 'rojo' => 'bg-danger',
+                      'prioritario' => 'bg-warning', 'bg-warning' => 'bg-warning', 'amarillo' => 'bg-warning',
+                      'importante' => 'bg-primary', 'bg-primary' => 'bg-primary', 'azul' => 'bg-primary',
+                      'desfasado' => 'bg-secondary', 'bg-secondary' => 'bg-secondary', 'gris' => 'bg-secondary',
+                      'seguimiento' => 'bg-success', 'bg-success' => 'bg-success', 'verde' => 'bg-success',
+                    ];
+                    $tagLabel = $labelMap[$raw] ?? '';
+                    $tagClass = $classMap[$raw] ?? 'bg-success';
+                  ?>
+                  <?php if ($tagLabel): ?>
+                    <span class="badge <?= h($tagClass) ?> ms-1"><?= h($tagLabel) ?></span>
+                  <?php endif; ?>
+                </div>
+                <div class="text-muted small text-end">
+                  <?= h(date('d/m/Y H:i', strtotime($c['fecha'] ?? 'now'))) ?><br><?= h($c['usuario'] ?? '') ?>
+                </div>
+              </div>
+              <div class="mt-2 text-secondary"><?= nl2br(h($c['comentario'] ?? '')) ?></div>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+
   </div>
+</div></div>
 
-  <style>
-    .vertical-timeline { width: 100%; position: relative; padding: 1.5rem 0 1rem; }
-    .vertical-timeline::before { content: ''; position: absolute; top: 0; left: 67px; height: 100%; width: 4px; background: #e9ecef; border-radius: .25rem; }
-    .vertical-timeline-element { position: relative; margin: 0 0 1rem; }
-    .vertical-timeline--animate .vertical-timeline-element-icon.bounce-in { visibility: visible; animation: cd-bounce-1 .8s; }
-    .vertical-timeline-element-icon { position: absolute; top: 0; left: 60px; }
-    .tl-dot { width: 18px; height: 18px; display: inline-block; border-radius: 50%; box-shadow: 0 0 0 5px #fff; }
-    .vertical-timeline-element-content {
-      position: relative;
-      margin-left: 90px;
-      font-size: .9rem;
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: .5rem;
-      padding: .75rem .9rem;
-    }
-    .timeline-title { font-size: .9rem; font-weight: 600; }
-    .vertical-timeline-element-date { display: block; top: 0; padding-right: 10px; text-align: right; color: #adb5bd; font-size: .8rem; white-space: nowrap; }
-    @keyframes cd-bounce-1 { 0% { opacity: 0; transform: translateY(-20px); } 60% { opacity: 1; transform: translateY(0); } 100% { opacity: 1; } }
-  </style>
-</div>
-
-<div class="modal-footer">
-  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-</div>
 <script>
-(() => {
-  const faseActualId = <?= json_encode($registro['Fk_fase_actual'] ?? null) ?>;
-  const totalFases = <?= count($fases) ?>;
-
-  if (faseActualId && totalFases > 0) {
-    fetch('/mapa/public/sections/lineadetiempo/get_orden_fase.php?id=' + faseActualId)
-      .then(res => res.json())
-      .then(data => {
-        if (data.ok && data.orden !== null) {
-          const porcentaje = Math.round((data.orden / totalFases) * 100);
-          const barra = document.querySelector('.progress-bar');
-          const texto = document.querySelector('#textoAvance');
-
-          if (barra) {
-            barra.style.width = porcentaje + '%';
-            barra.setAttribute('aria-valuenow', porcentaje);
-          }
-
-          if (texto) texto.textContent = 'Avance de fases: ' + porcentaje + '%';
-        }
+  // Inicializa lo de UI (counters, pill de etiqueta, guardar por fetch, filtro del stepper, etc.)
+  if (window.initComentariosModal) {
+    window.initComentariosModal(document.currentScript.closest('.modal-content')?.parentElement || document);
+  } else {
+    // Fallback mínimo para el filtro si aún no cargó comentarios_ui.js
+    (function(){
+      const bar  = document.getElementById('barEtapas');
+      const list = document.getElementById('listaComentarios');
+      if (!bar || !list) return;
+      document.getElementById('btnAll')?.addEventListener('click', ()=>{
+        list.querySelectorAll('.tl-item').forEach(it=> it.style.display = '');
       });
+      bar.addEventListener('click', (e)=>{
+        const li = e.target.closest('li.step[data-id]');
+        if (!li) return;
+        const id = String(li.dataset.id);
+        list.querySelectorAll('.tl-item').forEach(it=>{
+          it.style.display = (String(it.dataset.etapaId || '') === id) ? '' : 'none';
+        });
+        bar.querySelectorAll('li.step').forEach(s=>s.classList.remove('current'));
+        li.classList.add('current');
+      });
+    })();
   }
-})();
-
 </script>
-<script>
-(function() {
-  const form = document.getElementById('formComentario');
-  if (!form) return;
-
-  const idRegistro = <?= (int)$idRegistro ?>;
-
-  form.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const btn = form.querySelector('button[type="submit"]');
-    const original = btn.innerHTML;
-    btn.disabled = true; btn.innerHTML = 'Guardando...';
-
-    try {
-      const fd = new FormData(form);
-      const res = await fetch(form.action, { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.msg || 'No se pudo guardar');
-
-      const modalDialog = form.closest('.modal-dialog');
-      const url = '/mapa/public/sections/lineadetiempo/comentarios_modal.php?id=' + encodeURIComponent(idRegistro);
-      const html = await (await fetch(url, { cache: 'no-store' })).text();
-      modalDialog.innerHTML = html;
-    } catch (err) {
-      alert('Error: ' + (err.message || err));
-    } finally {
-      btn.disabled = false; btn.innerHTML = original;
-    }
-  });
-})();
-
-</script>
-
