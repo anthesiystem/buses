@@ -1,0 +1,12 @@
+RewriteEngine On
+RewriteBase /final/mapa/public/
+
+# Si el archivo/directorio no existe, redirigir al index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Permitir acceso directo a archivos existentes
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]

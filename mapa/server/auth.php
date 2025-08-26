@@ -22,6 +22,10 @@ function is_logged_in() {
   return isset($_SESSION['usuario']) && isset($_SESSION['usuario']['ID']);
 }
 
+function estaAutenticado() {
+  return is_logged_in();
+}
+
 function require_login_or_redirect() {
   // Inactividad (1h)
   if (isset($_SESSION['ultima_actividad']) && (time() - $_SESSION['ultima_actividad'] > 3600)) {

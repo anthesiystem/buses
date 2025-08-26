@@ -12,9 +12,16 @@ require_login_or_redirect();
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
   <script src="https://unpkg.com/akar-icons-fonts"></script>
- 
-     <script defer src="assets/script.js"></script>
-  
+  <!-- Configuración global -->
+  <script>
+    window.APP_CONFIG = {
+      baseUrl: '/final/mapa/public',
+      serverUrl: '/final/mapa/server',
+      mapagUrl: '/final/mapa/server/mapag'
+    };
+  </script>
+  <!-- Script principal mejorado -->
+  <script defer src="assets/script-combined.js"></script>
 </head>
 
 <script>

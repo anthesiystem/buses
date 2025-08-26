@@ -172,18 +172,34 @@ async function getACL(){
   </div>
 
   <!-- Script del mapa (con datos del bus) -->
+<script>
+// Configuración global del mapa
+window.MAPA_CONFIG = {
+    busId: <?= (int)$busId ?>,
+    colors: {
+        concluido: <?= json_encode($colorImplementado) ?>,
+        sinEjecutar: <?= json_encode($colorSinImplementar) ?>,
+        otro: <?= json_encode($colorPruebas) ?>
+    },
+    urls: {
+        conteos: '/final/mapa/server/mapabus/datos.php',
+        detalle: '/final/mapa/server/mapabus/busvista.php',
+        entidades: '/final/mapa/public/sections/mapabus/entidades_permitidas.php'
+    }
+};
+</script>
 
 <script
   id="mapaScript"
-  src="../../../server//mapabus/mapa.js?v=<?= time() ?>"
+  src="/final/mapa/server/mapabus/mapa.js?v=<?= time() ?>"
   data-bus-id="<?= (int)$busId ?>"
   data-color-concluido="<?= htmlspecialchars($colorImplementado, ENT_QUOTES) ?>"
   data-color-sin-ejecutar="<?= htmlspecialchars($colorSinImplementar, ENT_QUOTES) ?>"
   data-color-otro="<?= htmlspecialchars($colorPruebas, ENT_QUOTES) ?>"
   data-url-conteos="/final/mapa/server/mapabus/datos.php"
-  data-url-detalle="/final/mapa/server/mapabus/busvista.php"   <!-- 👈 -->
-  data-url-entidades="/final/mapa/public/sections/mapabus/entidades_permitidas.php"
-></script>
+  data-url-detalle="/final/mapa/server/mapabus/busvista.php"
+  data-url-entidades="/final/mapa/public/sections/mapabus/entidades_permitidas.php">
+</script>
 
 
 

@@ -80,10 +80,7 @@ $defaultIcon = lt_default_icon_url();                      // default.png existe
   <div class="header p-3 border-bottom">
     <div class="d-flex justify-content-between align-items-start">
       <div>
-        <h5 class="m-0">Comentarios del registro <span class="text-secondary">#<?= (int)$idRegistro ?></span></h5>
-        <div class="text-muted small">
-          <?= h($reg['Entidad'] ?? '') ?> · <?= h($reg['Dependencia'] ?? '') ?> · <?= h($reg['Bus'] ?? '') ?> · Tec: <?= h($reg['Tecnologia'] ?? '') ?>
-        </div>
+        <h5 class="m-0"> <?= h($reg['Entidad'] ?? '') ?> · <?= h($reg['Dependencia'] ?? '') ?> · <?= h($reg['Bus'] ?? '') ?> · TEC: <?= h($reg['Tecnologia'] ?? '') ?></h5>
       </div>
       <button type="button" class="btn btn-outline-secondary btn-sm rounded-3" data-bs-dismiss="modal">Cerrar</button>
     </div>
@@ -94,10 +91,10 @@ $defaultIcon = lt_default_icon_url();                      // default.png existe
     </div>
   </div>
 
-  <div class="layout" style="display:grid; grid-template-columns: 360px 1fr; gap:18px; padding:18px;">
+  <div class="layout" style="display:grid; grid-template-columns: 360px 1fr; gap:18px; height: calc(100vh - 150px); overflow: hidden;">
     <!-- ===== Formulario ===== -->
-      <div class="col-left">
-    <div>
+    <div class="col-left" style="padding:18px; overflow: hidden;">
+    <div style="height: 100%;">
       <form id="formComentario" class="card border-0 card-soft p-3" method="post" action="<?= h($ltBase) ?>/guardar_comentario.php" onsubmit="return window.guardarComentario?.(this) ?? true">
         <input type="hidden" name="Fk_registro" value="<?= (int)$idRegistro ?>">
         <input type="hidden" name="FK_etapa"    value="<?= (int)$etapaActualId ?>">
@@ -152,7 +149,7 @@ $defaultIcon = lt_default_icon_url();                      // default.png existe
     </div></div>
 
     <!-- ===== Stepper + Timeline ===== -->
-     <div class="col-right" style="display:flex; flex-direction:column; gap:12px;">
+     <div class="col-right" style="padding:18px; display:flex; flex-direction:column; gap:12px; height:100%; overflow-y:auto;">
     <?php
       $publicIcons = lt_public_base_url() . '/icons';
     ?>

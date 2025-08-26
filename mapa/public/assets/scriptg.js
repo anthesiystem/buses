@@ -4,6 +4,9 @@ function cargarSeccion(ruta) {
 
   // Guarda la ruta actual en localStorage
   localStorage.setItem('seccionActual', ruta);
+  
+  // Debug de carga
+  console.log('🔄 Cargando sección:', ruta);
 
   fetch(ruta)
     .then(response => {

@@ -301,36 +301,62 @@ if (isset($_GET['api'])) {
     const modal = new bootstrap.Modal(document.getElementById('modalForm'));
 
     // Cargar al iniciar
-   function initCatalogosAdmin(root=document) {
-  // Cargar la primera pestaña (o todas, como lo tenías)
-  for (const t of Object.keys(TABLES)) { loadTable(t); }
+    function initCatalogosAdmin(root=document) {
+      console.log('Iniciando catalogos admin...');
+      
+      // Cargar primera pestaña inmediatamente
+      const firstTable = Object.keys(TABLES)[0];
+      loadTable(firstTable).then(() => {
+        // Cargar el resto en segundo plano
+        Object.keys(TABLES).slice(1).forEach(t => loadTable(t));
+      });
 
-  // Cambios de pestaña
-  root.querySelectorAll('[data-tabla]').forEach(btn=>{
-    btn.addEventListener('shown.bs.tab', ev=>{
-      activeTab = ev.target.getAttribute('data-tabla');
-      if (!cache[activeTab]) loadTable(activeTab);
-    });
-  });
+      // Cambios de pestaña
+      root.querySelectorAll('[data-tabla]').forEach(btn => {
+        btn.addEventListener('shown.bs.tab', ev => {
+          activeTab = ev.target.getAttribute('data-tabla');
+          if (!cache[activeTab]) loadTable(activeTab);
+        });
+      });
 
-  // Buscar
-  root.querySelectorAll('input[data-role="search"]').forEach(i=>{
-    i.addEventListener('input', debounce(() => {
-      const tabla = i.getAttribute('data-tabla');
-      loadTable(tabla, i.value.trim());
-    }, 300));
-  });
+      // Buscar
+      root.querySelectorAll('input[data-role="search"]').forEach(i => {
+        i.addEventListener('input', debounce(() => {
+          const tabla = i.getAttribute('data-tabla');
+          loadTable(tabla, i.value.trim());
+        }, 300));
+      });
 
-  // Submit modal
-  root.querySelector('#formCat')?.addEventListener('submit', saveForm);
-}
+      // Submit modal
+      const form = root.querySelector('#formCat');
+      if (form) {
+        form.addEventListener('submit', saveForm);
+      }
+    }
 
-// Autoinit si entramos directo a catalogos_admin.php
-if (document.readyState !== 'loading') {
-  initCatalogosAdmin(document);
-} else {
-  document.addEventListener('DOMContentLoaded', () => initCatalogosAdmin(document));
-}
+    // Función para reinicializar cuando se carga en contenedor
+    function reinitCatalogos() {
+      console.log('Reinicializando catálogos...');
+      // Limpiar cache
+      Object.keys(cache).forEach(k => delete cache[k]);
+      // Reiniciar
+      initCatalogosAdmin(document);
+    }
+
+    // Init en carga directa
+    if (document.readyState !== 'loading') {
+      initCatalogosAdmin(document);
+    } else {
+      document.addEventListener('DOMContentLoaded', () => initCatalogosAdmin(document));
+    }
+
+    // Init en carga dinámica
+    if (window.parent !== window) {
+      reinitCatalogos();
+    }
+
+    // Exponer para llamada externa
+    window.reinitCatalogos = reinitCatalogos;
 
 // Deja accesible para que index.php pueda llamar tras inyectar
 window.initCatalogosAdmin = initCatalogosAdmin;

@@ -16,9 +16,34 @@ if (!estado) {
 
   const fecha = new Date().toLocaleDateString("es-MX");
 
-const escudoEstado = await safeToBase64('/mapa/public/img/escudos/' + estado + '.png');
-const imgMapa = await safeToBase64('/mapa/public/img/mapa_estados/' + estado + '.png');
-const plantillaBase = await safeToBase64('/mapa/public/img/hojaplantilla.jpg');
+// Cargar las imágenes necesarias
+console.log("Iniciando carga de imágenes para el estado:", estado);
+
+// Función para capitalizar la primera letra de cada palabra
+function capitalizarPalabras(str) {
+    return str.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+}
+
+// Formatear el nombre del estado para coincidir con el nombre del archivo
+const estadoFormateado = capitalizarPalabras(estado);
+console.log("Buscando imágenes para:", estadoFormateado);
+
+const escudoEstado = await safeToBase64('/mapa/public/img/escudos/' + estadoFormateado + '.png');
+if (!escudoEstado) {
+    console.error("No se pudo cargar el escudo del estado");
+}
+
+const imgMapa = await safeToBase64('/mapa/public/img/mapa_estados/' + estadoFormateado + '.png');
+if (!imgMapa) {
+    console.error("No se pudo cargar el mapa del estado");
+}
+
+const plantillaBase = await safeToBase64('/mapa/public/img/hojaplantilla.png');
+if (!plantillaBase) {
+    console.error("No se pudo cargar la plantilla base");
+}
 
 
   // Extraer buses únicos del detalle
@@ -204,7 +229,7 @@ for (let i = 0; i < catalogoCompleto.length; i += 2) {
 
   // ░░░ NUEVA PÁGINA CON FORMATO HORIZONTAL ░░░
 // ░░ PÁGINA HORIZONTAL ░░
-const plantillaHorizontal = await safeToBase64('/mapa/public/img/hojaplantillahorizontal.jpg');
+const plantillaHorizontal = await safeToBase64('/mapa/public/img/hojaplantillahorizontal.png');
 
 // 📌 Ojo: en jsPDF 2.x la firma correcta es:
 doc.addPage('letter', 'l');   // 'l' = landscape (también vale 'landscape')
@@ -307,12 +332,18 @@ doc.save(`reporte_${estado}_${fecha.replaceAll('/', '-')}.pdf`);
   // ░░░ FUNCIONES AUXILIARES ░░░
   async function safeToBase64(path) {
     try {
+      console.log("Intentando cargar imagen desde:", path);
       const res = await fetch(path);
-      if (!res.ok) throw new Error("404");
+      if (!res.ok) {
+        console.error(`Error ${res.status} al cargar imagen:`, path);
+        throw new Error(`${res.status}`);
+      }
       const blob = await res.blob();
-      return await toBase64(blob);
+      const base64 = await toBase64(blob);
+      console.log("Imagen cargada exitosamente:", path);
+      return base64;
     } catch (err) {
-      console.warn("Imagen no encontrada:", path);
+      console.error("Error al cargar imagen:", path, err);
       return null;
     }
   }

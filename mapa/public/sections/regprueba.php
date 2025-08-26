@@ -312,6 +312,10 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     padding-top: 5%;
 }
 
+/* Sin scroll interno en la tarjeta/tabla */
+.table-card { max-height: none !important; overflow: visible !important; }
+.table-responsive { overflow: visible !important; }
+
   </style>
 </head>
 
@@ -431,16 +435,39 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
                 <button class="btn btn-outline-brand btn-sm" data-bs-toggle="tooltip" data-bs-title="Editar" onclick='editar(<?= $json ?>)'>
                   <i class="bi bi-pencil"></i><span class="text ms-1">Editar</span>
                 </button>
-                <!-- Ejemplo extra: Comentarios -->
-                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#comentariosModal">
-                  <i class="bi bi-chat-left-text"></i><span class="text ms-1">Comentarios</span>
-                </button>
+
               </div>
             </td>
           </tr>
           <?php endforeach; ?>
         </tbody>
       </table>
+
+      <!-- Paginación -->
+<div id="paginacion" class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-2 p-2 border-top">
+  <div class="d-flex align-items-center gap-2">
+    <label for="perPage" class="form-label m-0">Filas por página:</label>
+    <select id="perPage" class="form-select form-select-sm" style="width:auto">
+      <option value="10" selected>10</option>
+      <option value="20" >20</option>
+      <option value="30">30</option>
+      <option value="50">50</option>
+      <option value="100">100</option>
+    </select>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <button id="btnFirst" class="btn btn-outline-secondary btn-sm" title="Primera">&laquo;</button>
+    <button id="btnPrev"  class="btn btn-outline-secondary btn-sm" title="Anterior">&lsaquo;</button>
+    <span id="pageInfo" class="small text-muted">Página 1 / 1</span>
+    <button id="btnNext"  class="btn btn-outline-secondary btn-sm" title="Siguiente">&rsaquo;</button>
+    <button id="btnLast"  class="btn btn-outline-secondary btn-sm" title="Última">&raquo;</button>
+  </div>
+  <div>
+    <span id="rangeInfo" class="small text-muted">Mostrando 0–0 de 0</span>
+  </div>
+</div>
+
+
     </div>
   </div>
 
@@ -577,26 +604,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 </div>
 
 
-  <!-- Modal Comentarios (opcional, demo) -->
-  <div class="modal fade" id="comentariosModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Comentarios</h5>
-          <button class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted">Aquí puedes cargar/guardar comentarios del registro seleccionado.</p>
-          <textarea class="form-control" rows="6" placeholder="Escribe comentarios…"></textarea>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
-          <button class="btn btn-brand">Guardar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
+ 
   <!-- Overlays -->
   <div id="cargando" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.8); z-index:2000; backdrop-filter: blur(2px);">
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
@@ -1068,6 +1076,188 @@ document.addEventListener('DOMContentLoaded', () => {
       if (overlayCargando) overlayCargando.style.display = 'none';
     }
   }, true);
+})();
+</script>
+<script>
+/* =======================
+   Paginación + Integración
+   ======================= */
+(function() {
+  const table   = document.getElementById('tablaReg');
+  const tbody   = table.querySelector('tbody');
+  const rows    = Array.from(tbody.rows);     // colección base (todas las filas)
+  const q       = document.getElementById('q');
+  const selCount   = document.getElementById('selCount');
+  const checkAll   = document.getElementById('checkAll');
+  const clickSelect= document.getElementById('clickSelect');
+
+  // Controles de paginación
+  const perPageSel = document.getElementById('perPage');
+  const btnFirst   = document.getElementById('btnFirst');
+  const btnPrev    = document.getElementById('btnPrev');
+  const btnNext    = document.getElementById('btnNext');
+  const btnLast    = document.getElementById('btnLast');
+  const pageInfo   = document.getElementById('pageInfo');
+  const rangeInfo  = document.getElementById('rangeInfo');
+
+  // Estado
+  const state = {
+    term: '',
+    page: 1,
+    perPage: parseInt(perPageSel?.value || '10', 10),
+    filtered: rows  // filas que pasan el filtro de búsqueda
+  };
+
+  // Helpers
+  const normalize = (s) => (s || '').toString().trim().toLowerCase();
+
+  function applySearch() {
+    const t = normalize(state.term);
+    state.filtered = t
+      ? rows.filter(r => r.innerText.toLowerCase().includes(t))
+      : rows.slice();
+
+    // Reinicia a primera página si se reduce el universo
+    state.page = 1;
+    renderPage();
+  }
+
+  function getTotalPages() {
+    return Math.max(1, Math.ceil(state.filtered.length / state.perPage));
+  }
+
+  function clampPage() {
+    const total = getTotalPages();
+    if (state.page > total) state.page = total;
+    if (state.page < 1) state.page = 1;
+  }
+
+  function currentSlice() {
+    const start = (state.page - 1) * state.perPage;
+    const end   = start + state.perPage;
+    return state.filtered.slice(start, end);
+  }
+
+  function renderPage() {
+    clampPage();
+
+    // Ocultar todas, mostrar solo las del slice actual
+    rows.forEach(r => r.style.display = 'none');
+    const slice = currentSlice();
+    slice.forEach(r => r.style.display = '');
+
+    // Actualizar info
+    const total = state.filtered.length;
+    const totalPages = getTotalPages();
+    const startIdx = total ? ((state.page - 1) * state.perPage + 1) : 0;
+    const endIdx = total ? Math.min(state.page * state.perPage, total) : 0;
+
+    if (pageInfo)  pageInfo.textContent  = `Página ${state.page} / ${totalPages}`;
+    if (rangeInfo) rangeInfo.textContent = `Mostrando ${startIdx}–${endIdx} de ${total}`;
+
+    // Habilitar/deshabilitar botones
+    const onFirst = state.page === 1;
+    const onLast  = state.page === totalPages;
+    [btnFirst, btnPrev].forEach(b => b && (b.disabled = onFirst));
+    [btnNext, btnLast].forEach(b => b && (b.disabled = onLast));
+
+    // Recalcular “Seleccionar todo” e indicador
+    refreshCount();
+  }
+
+  // Integración: búsqueda
+  if (q) {
+    q.addEventListener('input', () => {
+      state.term = q.value;
+      applySearch();
+    });
+  }
+
+  // Integración: ordenamiento (tu código ya ordena "rows" y las re-anexa)
+  // Solo necesitamos volver a paginar después de cada click de orden:
+  table.querySelectorAll('thead th[data-sort]').forEach((th) => {
+    if (th.getAttribute('data-sort') === 'none') return;
+    th.addEventListener('click', () => {
+      // Después de reordenar "rows" por tu código original,
+      // actualizamos estado.filtered con el mismo orden nuevo + filtro vigente:
+      // (si hay término de búsqueda, filtramos el "rows" ordenado)
+      const t = normalize(state.term);
+      state.filtered = t
+        ? rows.filter(r => r.innerText.toLowerCase().includes(t))
+        : rows.slice();
+      state.page = 1;
+      renderPage();
+    });
+  });
+
+  // Selección por clic/checkbox ya la tienes; solo ajustamos a "visibles de la página":
+  function visibleInPage(tr) {
+    return tr.style.display !== 'none';
+  }
+
+  function refreshCount() {
+    const visibles = rows.filter(visibleInPage);
+    const n = visibles.filter(r => r.querySelector('.row-check')?.checked).length;
+    if (selCount) selCount.textContent = `${n} seleccionada${n===1?'':'s'}`;
+
+    const visiblesChecked = visibles.length > 0 && visibles.every(r => r.querySelector('.row-check')?.checked);
+    if (checkAll) {
+      checkAll.indeterminate = !visiblesChecked && n > 0;
+      checkAll.checked = visiblesChecked;
+    }
+  }
+
+  // Re-enganchar selección individual (por si hay filas dinámicas)
+  tbody.querySelectorAll('.row-check').forEach(cb => {
+    cb.addEventListener('change', (e)=> {
+      const tr = e.target.closest('tr');
+      tr.classList.toggle('selected', e.target.checked);
+      refreshCount();
+    });
+  });
+
+  // Seleccionar todo (solo visibles de la página)
+  if (checkAll) {
+    checkAll.addEventListener('change', () => {
+      const checked = checkAll.checked;
+      rows.forEach(row => {
+        if (!visibleInPage(row)) return;
+        const cb = row.querySelector('.row-check');
+        if (!cb) return;
+        cb.checked = checked;
+        row.classList.toggle('selected', checked);
+      });
+      refreshCount();
+    });
+  }
+
+  // Clic en fila (mantener tu comportamiento)
+  tbody.addEventListener('click', (e) => {
+    if (!clickSelect?.checked) return;
+    if (e.target.closest('button, .form-check-input, a, [data-bs-toggle]')) return;
+    const tr = e.target.closest('tr');
+    if (!tr || !visibleInPage(tr)) return;
+    const cb = tr.querySelector('.row-check');
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    tr.classList.toggle('selected', cb.checked);
+    refreshCount();
+  });
+
+  // Eventos de paginación
+  if (perPageSel) perPageSel.addEventListener('change', () => {
+    state.perPage = parseInt(perPageSel.value, 10) || 10;
+    state.page = 1;
+    renderPage();
+  });
+
+  btnFirst?.addEventListener('click', () => { state.page = 1; renderPage(); });
+  btnPrev ?.addEventListener('click', () => { state.page--;  renderPage(); });
+  btnNext ?.addEventListener('click', () => { state.page++;  renderPage(); });
+  btnLast ?.addEventListener('click', () => { state.page = getTotalPages(); renderPage(); });
+
+  // Inicializa
+  applySearch(); // esto ya llama a renderPage()
 })();
 </script>
 

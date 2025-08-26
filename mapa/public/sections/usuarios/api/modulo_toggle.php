@@ -12,9 +12,9 @@ try{
   $row = $cur->fetch(PDO::FETCH_ASSOC);
   if (!$row) throw new Exception('No existe');
 
-  $nuevo = ($row['activo']=='1' || $row['activo']==1) ? 0 : 1;
-  $upd = $pdo->prepare("UPDATE modulo SET activo=?, fecha_modificacion=NOW() WHERE ID=?");
-  $upd->execute([(int)$nuevo, $id]);
+  // Usando NOT para alternar el valor del bit directamente
+  $upd = $pdo->prepare("UPDATE modulo SET activo = NOT activo WHERE ID=?");
+  $upd->execute([$id]);
   $pdo->commit();
   echo json_encode(['ok'=>true]);
 }catch(Throwable $e){

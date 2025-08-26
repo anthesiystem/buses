@@ -8,15 +8,16 @@ function iniciarMapa() {
   const s = document.getElementById("mapaScript");
   if (!s) return console.error("No se encontró el script con id=mapaScript");
 
-  // Endpoints desde data-attrs (con fallback compatibles)
-  const busID            = +(s.dataset.busId || s.dataset.bus_id || 0);
-  const endpointConteos  = s.dataset.urlConteos   || s.dataset.urlDatos   || "/final/mapa/server/mapabus/datos.php";
-  const endpointDetalle  = s.dataset.urlDetalle   || "/final/mapa/server/mapabus/detalle.php";
-  const endpointEnts     = s.dataset.urlEntidades || "/final/mapa/public/sections/mapabus/entidades_permitidas.php";
+  // Endpoints desde data-attrs o config global
+  const cfg = window.MAPA_CONFIG || {};
+  const busID            = cfg.busId || +(s.dataset.busId || s.dataset.bus_id || 0);
+  const endpointConteos  = cfg.urls?.conteos || s.dataset.urlConteos || s.dataset.urlDatos || "/final/mapa/server/mapabus/datos.php";
+  const endpointDetalle  = cfg.urls?.detalle || s.dataset.urlDetalle || "/final/mapa/server/mapabus/detalle.php"; 
+  const endpointEnts     = cfg.urls?.entidades || s.dataset.urlEntidades || "/final/mapa/public/sections/mapabus/entidades_permitidas.php";
 
-  const colorConcluido   = s.dataset.colorConcluido;
-  const colorSinEjecutar = s.dataset.colorSinEjecutar;
-  const colorOtro        = s.dataset.colorOtro;
+  const colorConcluido   = cfg.colors?.concluido || s.dataset.colorConcluido;
+  const colorSinEjecutar = cfg.colors?.sinEjecutar || s.dataset.colorSinEjecutar;
+  const colorOtro        = cfg.colors?.otro || s.dataset.colorOtro;
 
   console.log("🔗 Endpoints:", { endpointConteos, endpointDetalle, endpointEnts, busID });
 

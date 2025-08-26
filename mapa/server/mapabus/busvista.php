@@ -169,55 +169,157 @@ foreach ($agrupados as $categoria => $registros):
   </div>
 <?php endforeach; ?>
 
-<!-- MODAL DETALLE DE REGISTROS -->
+<!-- MODAL DETALLE DE REGISTROS --><!-- MODAL DETALLE DE REGISTROS - ESTILOS + UI MEJORADA -->
+<!-- ESTILOS BÁSICOS (solo diseño) -->
+<style>
+  /* Modal */
+  .modal-content.detalles {
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: 0 20px 45px rgba(0,0,0,.15);
+    overflow: hidden;
+  }
+  .modal-header.detalles {
+    background: linear-gradient(135deg, #911f1f, #fd0d39);
+    color: #fff;
+    border: 0;
+  }
+  .modal-header.detalles .btn-close {
+    filter: invert(1) grayscale(100%);
+  }
+
+  /* Encabezado de categoría */
+  .detalles-cat {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-top: 1.25rem;
+    margin-bottom: .5rem;
+    font-weight: 700;
+    color: var(--bs-secondary-color);
+    border-bottom: 1px dashed var(--bs-border-color);
+    padding-bottom: .25rem;
+  }
+  .detalles-cat .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .25rem .6rem;
+    border-radius: 999px;
+    background: rgba(253, 13, 41, 0.08);
+    color: #fd0d45;
+    font-weight: 600;
+    font-size: .9rem;
+  }
+
+  /* Tabla */
+  .detalles-table {
+    --row-pad-y: .6rem;
+    --row-pad-x: .75rem;
+    --font-size: .95rem;
+    --radius: .75rem;
+    --thead-bg: #ffcfcf;
+    --thead-color: #fd0d59;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    font-size: var(--font-size);
+    overflow: hidden;
+    border-radius: var(--radius);
+  }
+  .detalles-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--thead-bg);
+    color: var(--thead-color);
+    font-weight: 700;
+    border-bottom: 1px solid var(--bs-border-color);
+    padding: .7rem var(--row-pad-x);
+    white-space: nowrap;
+  }
+  .detalles-table tbody td {
+    padding: var(--row-pad-y) var(--row-pad-x);
+    vertical-align: middle;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+  }
+  .detalles-table tbody tr:hover td {
+    background: #f6e4e492;
+  }
+  .detalles-table tr:nth-child(even) td {
+    background: #f7f4f499;
+  }
+  .detalles-table .badge-soft {
+    background: rgba(125, 108, 111, 0.12);
+    color: #6c757d;
+    font-weight: 600;
+    padding: .35rem .55rem;
+    border-radius: .5rem;
+  }
+  .detalles-table .text-strong {
+    font-weight: 700;
+    color: var(--bs-emphasis-color);
+  }
+  .detalles-table .text-accent {
+    font-weight: 600;
+    color: #e90e45;
+  }
+</style>
+
+<!-- MODAL SOLO CON TABLAS -->
 <div class="modal fade" id="modalDetalles" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
+    <div class="modal-content detalles">
+      <div class="modal-header detalles">
         <h5 class="modal-title">Detalle de Registros</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
+
       <div class="modal-body">
         <?php foreach ($agrupados as $categoria => $grupo): ?>
-          <h5 class="mt-3"><?= h($categoria) ?> (<?= count($grupo) ?>)</h5>
-          <div class="table-responsive">
-            <table class="table table-bordered table-sm">
-              <thead class="table-dark">
-                <tr>
-                  <th>Categoria</th>
-                  <th>Engine</th>
-                  <th>Tecnologia</th>
-                  <th>Dependencia</th>
-                  <th>Entidad</th>
-                  <th>Bus</th>
-                  <th>Etapa</th>
-                  <th>Fecha Inicio</th>
-                  <th>Fecha Migración</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($grupo as $row): ?>
-                <tr>
-                  <td><?= h($row['Categoria']) ?></td>
-                  <td><?= h($row['Motor_Base']) ?></td>
-                  <td><?= h($row['Tecnologia']) ?></td>
-                  <td><?= h($row['Dependencia']) ?></td>
-                  <td><?= h($row['Entidad']) ?></td>
-                  <td><?= h($row['bus_nombre']) ?></td>
-                  <td><?= h($row['Etapa']) ?></td>
-                  <td><?= h($row['Fecha_Inicio']) ?></td>
-                  <td><?= h($row['Fecha_Migracion']) ?></td>
-                </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
+          <div class="detalles-bloque mb-4">
+            <div class="detalles-cat">
+              <span><?= h($categoria) ?></span>
+              <span class="chip" title="Registros en esta categoría"><?= count($grupo) ?> registros</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="detalles-table table w-100">
+                <thead>
+                  <tr>
+                    <th>Categoria</th>
+                    <th>Engine</th>
+                    <th>Tecnologia</th>
+                    <th>Dependencia</th>
+                    <th>Entidad</th>
+                    <th>Bus</th>
+                    <th>Etapa</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Migración</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($grupo as $row): ?>
+                    <tr>
+                      <td><span class="badge-soft"><?= h($row['Categoria']) ?></span></td>
+                      <td><?= h($row['Motor_Base']) ?></td>
+                      <td class="text-accent"><?= h($row['Tecnologia']) ?></td>
+                      <td><?= h($row['Dependencia']) ?></td>
+                      <td><?= h($row['Entidad']) ?></td>
+                      <td class="text-strong"><?= h($row['bus_nombre']) ?></td>
+                      <td><?= h($row['Etapa']) ?></td>
+                      <td><span class="text-body-secondary small"><?= h($row['Fecha_Inicio']) ?></span></td>
+                      <td><span class="text-body-secondary small"><?= h($row['Fecha_Migracion']) ?></span></td>
+                    </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+
           </div>
         <?php endforeach; ?>
       </div>
     </div>
   </div>
 </div>
-
-
-
-

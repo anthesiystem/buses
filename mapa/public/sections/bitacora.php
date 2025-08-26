@@ -1,14 +1,13 @@
 <?php
 session_start();
-require_once '../../server/config.php';
+require_once dirname(__FILE__) . '/../../server/config.php';
 
 if (!isset($_SESSION['fk_perfiles']) || $_SESSION['fk_perfiles'] < 4) {
-    header("Location: acceso_denegado.php");
-    exit;
+    die('No tiene permiso para acceder a esta sección');
 }
 
 if (!isset($_SESSION['usuario_id'])) {
-    header("Location: login.php");
+    header("Location: /final/mapa/public/login.php");
     exit;
 }
 
@@ -64,12 +63,17 @@ $usuarios_result = $pdo->query("SELECT ID, cuenta FROM usuario ORDER BY cuenta")
 $tablas_result = $pdo->query("SELECT DISTINCT Tabla_Afectada FROM bitacora ORDER BY Tabla_Afectada");
 ?>
 
-<!-- Resto del HTML -->
+<!DOCTYPE html>
+<html lang="es">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bitácora de Auditoría</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+    <div id="bitacora-root">
 <div class="container mt-4">
     <h2 class="mb-4">Bitácora de Auditoría</h2>
 
@@ -144,5 +148,28 @@ $tablas_result = $pdo->query("SELECT DISTINCT Tabla_Afectada FROM bitacora ORDER
             </tbody>
         </table>
     </div>
-</div>
+        <?php include __DIR__ . '/bitacora/content.php'; ?>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Función para inicializar cuando se carga dinámicamente
+        function initBitacoraContainer() {
+            if (typeof initPagination === 'function') {
+                initPagination();
+            }
+        }
+
+        // Evento para cuando se carga dinámicamente
+        document.addEventListener('contentLoaded', function(e) {
+            if (e.detail && e.detail.module === 'bitacora') {
+                setTimeout(initBitacoraContainer, 100);
+            }
+        });
+
+        // Si se carga como contenido dinámico, inicializar
+        if (window.parent !== window) {
+            initBitacoraContainer();
+        }
+    </script>
 </body>

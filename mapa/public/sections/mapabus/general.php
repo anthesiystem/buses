@@ -12,6 +12,9 @@ require_once '../../../server/config.php';
       .tabla-responsive-fila td::before{ content:attr(data-label); font-weight:bold; flex-basis:40%; color:#333; }
       .tabla-responsive-fila td:last-child{ border-bottom:none; }
     }
+    #info {
+          margin-top: 26px;
+    }
   </style>
   <base href="/final/mapa/public/">
 </head>
@@ -47,9 +50,9 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) $catalogoBuses[] = $row['descripci
 <script
   id="mapaScript"
   src="/final/mapa/server/mapag/mapageneral.js?v=1"
-  data-color-concluido="#95e039"
-  data-color-sin-ejecutar="gray"
-  data-color-otro="#de4f33"
+  data-color-concluido="#04a404b6"
+  data-color-sin-ejecutar="#B0B0B0"
+  data-color-otro="#d7201aad"
   data-url-datos="/final/mapa/server/mapag/generalindex.php"
   data-url-detalle="/final/mapa/server/mapag/detalle.php"
   data-catalogo-buses='<?= json_encode($catalogoBuses, JSON_UNESCAPED_UNICODE) ?>'>
@@ -62,9 +65,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const a = document.getElementById("legendConcluido");
     const b = document.getElementById("legendPruebas");
     const c = document.getElementById("legendSinEjecutar");
-    if (a) a.setAttribute("fill", "#95e039");
-    if (b) b.setAttribute("fill", "#de4f33");
-    if (c) c.setAttribute("fill", "gray");
+    if (a) a.setAttribute("fill", "#04a404b6");
+    if (b) b.setAttribute("fill", "#d7201aff");
+    if (c) c.setAttribute("fill", "#B0B0B0");
     if (a && b && c) clearInterval(iv);
   }, 120);
 });

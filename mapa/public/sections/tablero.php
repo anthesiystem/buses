@@ -20,7 +20,7 @@ require_once '../../server/config.php';
 
       <?php
       // Conexión directa (si no usas $pdo aquí)
-      $conexion = new mysqli("localhost", "admin", "admin1234", "buses");
+      $conexion = new mysqli("localhost", "admin", "admin1234", "buses1");
       if ($conexion->connect_error) {
           die("Error de conexión: " . $conexion->connect_error);
       }

@@ -10,7 +10,11 @@ function toast(msg, tipo='success') {
 console.log('[usuarios.js] cargado');
 
 const $ = (sel, root=document) => root.querySelector(sel);
-const apiBase = '/final/mapa/public/sections/usuarios/api/';
+// Determina la ruta base de la API basándose en la ubicación del script
+const scriptPath = document.currentScript?.src || '';
+const apiBase = scriptPath.includes('/sections/usuarios/') 
+  ? '/final/mapa/public/sections/usuarios/api/'  // Ruta absoluta 
+  : 'api/';  // Ruta relativa si estamos en el directorio
 
 function showDiag(msg, isError=true){
   let box = $('#diag');
@@ -123,7 +127,9 @@ async function cargarPersonas(){
         <td>${p.entidad||''}</td>
         <td>${p.activo=='1'?'Sí':'No'}</td>
         <td>
-          <button class="btn btn-sm btn-outline-primary" onclick='abrirModalPersona(${JSON.stringify(p)})'>Editar</button>
+          <button class="btn btn-sm btn-outline-primary" 
+            data-persona='${JSON.stringify(p).replace(/'/g, "&apos;")}' 
+            onclick="abrirModalPersona(JSON.parse(this.dataset.persona))">Editar</button>
           <button class="btn btn-sm btn-outline-secondary" onclick="togglePersona(${p.ID})">${p.activo=='1'?'Desactivar':'Activar'}</button>
         </td>
       </tr>`;
@@ -131,6 +137,7 @@ async function cargarPersonas(){
 }
 
 window.abrirModalPersona = function(p=null){
+  console.log('Abriendo modal persona:', p);
   $('#tituloPersona').textContent = p ? 'Editar persona' : 'Nueva persona';
   $('#personaID').value       = p?.ID || '';
   $('#personaNombre').value   = p?.nombre || '';
@@ -141,6 +148,7 @@ window.abrirModalPersona = function(p=null){
   $('#personaDep').value      = p?.Fk_dependencia || '';
   $('#personaEnt').value      = p?.Fk_entidad || '';
   $('#personaActivo').value   = p?.activo || '1';
+  mostrarModal('modalPersona');
 };
 
 $('#formPersona')?.addEventListener('submit', async (e)=>{
@@ -148,8 +156,13 @@ $('#formPersona')?.addEventListener('submit', async (e)=>{
   const body = new URLSearchParams(new FormData(e.target)).toString();
   const r = await fetchJSON(apiBase+'persona_guardar.php', body);
   if (r && r.ok){
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalPersona'));
+    if (modal) {
+      modal.hide();
+      // Dar tiempo al modal para ocultarse antes de limpiar
+      setTimeout(limpiarModal, 300);
+    }
     toast('Persona guardada','success');
-    bootstrap.Modal.getInstance(document.getElementById('modalPersona')).hide();
     await cargarPersonas();
     await cargarCatalogos();
   } else { toast((r && r.msg) ? r.msg : 'No se pudo guardar','error'); }
@@ -176,7 +189,9 @@ async function cargarUsuarios(){
         <td class="text-start">${u.persona||''}</td>
         <td>${u.activo=='1'?'Sí':'No'}</td>
         <td>
-          <button class="btn btn-sm btn-outline-primary" onclick='abrirModalUsuario(${JSON.stringify(u)})'>Editar</button>
+          <button class="btn btn-sm btn-outline-primary" 
+            data-usuario='${JSON.stringify(u).replace(/'/g, "&apos;")}' 
+            onclick="abrirModalUsuario(JSON.parse(this.dataset.usuario))">Editar</button>
           <button class="btn btn-sm btn-outline-warning" onclick="resetPass(${u.ID})">Reset pass</button>
         </td>
       </tr>`;
@@ -184,6 +199,7 @@ async function cargarUsuarios(){
 }
 
 window.abrirModalUsuario = function(u=null){
+  console.log('Abriendo modal usuario:', u);
   $('#tituloUsuario').textContent = u ? 'Editar usuario' : 'Nuevo usuario';
   $('#usuarioID').value       = u?.ID || '';
   $('#usuarioPersona').value  = u?.Fk_persona || '';
@@ -191,6 +207,7 @@ window.abrirModalUsuario = function(u=null){
   $('#usuarioNivel').value    = u?.nivel || '0';
   $('#usuarioActivo').value   = u?.activo || '1';
   $('#usuarioPass').value     = '';
+  mostrarModal('modalUsuario');
 };
 
 $('#formUsuario')?.addEventListener('submit', async (e)=>{
@@ -198,8 +215,12 @@ $('#formUsuario')?.addEventListener('submit', async (e)=>{
   const body = new URLSearchParams(new FormData(e.target)).toString();
   const r = await fetchJSON(apiBase+'usuario_guardar.php', body);
   if (r && r.ok){
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalUsuario'));
+    if (modal) {
+      modal.hide();
+      setTimeout(limpiarModal, 300);
+    }
     toast('Usuario guardado');
-    bootstrap.Modal.getInstance(document.getElementById('modalUsuario')).hide();
     await cargarUsuarios();
     await cargarCatalogos();
   } else toast((r && r.msg) || 'No se pudo guardar');
@@ -256,7 +277,9 @@ async function cargarPermisos(){
         <td>${p.accion ?? 'Todos'}</td>
         <td>${p.activo=='1'?'Sí':'No'}</td>
         <td>
-          <button class="btn btn-sm btn-outline-primary" onclick='abrirModalPermiso(${JSON.stringify(p)})'>Editar</button>
+          <button class="btn btn-sm btn-outline-primary" 
+            data-permiso='${JSON.stringify(p).replace(/'/g, "&apos;")}' 
+            onclick="abrirModalPermiso(JSON.parse(this.dataset.permiso))">Editar</button>
           <button class="btn btn-sm btn-outline-secondary" onclick="togglePermiso(${p.ID})">${p.activo=='1'?'Desactivar':'Activar'}</button>
         </td>
       </tr>`;
@@ -265,6 +288,7 @@ async function cargarPermisos(){
 
 // Modal permiso (NULL ↔ "Todos")
 window.abrirModalPermiso = function(p=null){
+  console.log('Abriendo modal permiso:', p);
   $('#tituloPermiso').textContent = p ? 'Editar permiso' : 'Nuevo permiso';
   $('#permisoID').value   = p?.ID || '';
   $('#permUsuario').value = p?.Fk_usuario || '';
@@ -273,6 +297,7 @@ window.abrirModalPermiso = function(p=null){
   setSelectTodosAware($('#permBus'),     p?.FK_bus     ?? null);
   setSelectTodosAware($('#permAccion'),  p?.accion     ?? null);
   $('#permActivo').value  = p?.activo ?? '1';
+  mostrarModal('modalPermiso');
 };
 
 // Guardar permiso: '' => NULL (omitimos clave)
@@ -286,8 +311,12 @@ $('#formPermiso')?.addEventListener('submit', async (e)=>{
   }
   const r = await fetchJSON(apiBase+'permiso_guardar.php', payload.toString());
   if (r?.ok){
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalPermiso'));
+    if (modal) {
+      modal.hide();
+      setTimeout(limpiarModal, 300);
+    }
     toast('Permiso guardado');
-    bootstrap.Modal.getInstance(document.getElementById('modalPermiso')).hide();
     await cargarPermisos();
   } else { toast(r?.msg || 'No se pudo guardar'); }
 });
@@ -323,7 +352,9 @@ async function cargarModulos(){
         <td class="text-start">${m.descripcion}</td>
         <td>${(m.activo==1||m.activo=='1')?'Sí':'No'}</td>
         <td>
-          <button class="btn btn-sm btn-outline-primary" onclick='abrirModalModulo(${JSON.stringify(m)})'>Editar</button>
+          <button class="btn btn-sm btn-outline-primary" 
+            data-modulo='${JSON.stringify(m).replace(/'/g, "&apos;")}' 
+            onclick="abrirModalModulo(JSON.parse(this.dataset.modulo))">Editar</button>
           <button class="btn btn-sm btn-outline-secondary" onclick='toggleModulo(${m.ID})'>${(m.activo==1||m.activo=='1')?'Desactivar':'Activar'}</button>
         </td>
       </tr>`;
@@ -331,10 +362,12 @@ async function cargarModulos(){
 }
 
 window.abrirModalModulo = m=>{
+  console.log('Abriendo modal módulo:', m);
   $('#tituloModulo').textContent = m ? 'Editar módulo' : 'Nuevo módulo';
   $('#moduloID').value     = m?.ID || '';
   $('#moduloDesc').value   = m?.descripcion || '';
   $('#moduloActivo').value = (m?.activo==1||m?.activo=='1') ? '1' : '0';
+  mostrarModal('modalModulo');
 };
 
 $('#formModulo')?.addEventListener('submit', async e=>{
@@ -342,8 +375,12 @@ $('#formModulo')?.addEventListener('submit', async e=>{
   const body = new URLSearchParams(new FormData(e.target)).toString();
   const r = await fetchJSON(apiBase+'modulo_guardar.php', body);
   if (r?.ok){
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalModulo'));
+    if (modal) {
+      modal.hide();
+      setTimeout(limpiarModal, 300);
+    }
     toast('Módulo guardado','success');
-    bootstrap.Modal.getInstance(document.getElementById('modalModulo')).hide();
     await cargarModulos();
     await cargarCatalogos();
   } else { toast(r?.msg||'No se pudo guardar','error'); }
@@ -355,8 +392,59 @@ window.toggleModulo = async id=>{
   else { toast(r?.msg||'No se pudo actualizar','error'); }
 };
 
+// Helpers para modales Bootstrap
+function initModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+
+  // Limpiar eventos anteriores
+  el.removeEventListener('hidden.bs.modal', limpiarModal);
+  
+  // Agregar nuevo manejador para limpiar cuando se cierre
+  el.addEventListener('hidden.bs.modal', limpiarModal);
+  
+  return bootstrap.Modal.getOrCreateInstance(el);
+}
+
+function limpiarModal() {
+  // Remover cualquier backdrop que haya quedado
+  const backdrops = document.getElementsByClassName('modal-backdrop');
+  Array.from(backdrops).forEach(el => el.remove());
+  
+  // Limpiar clases del body
+  document.body.classList.remove('modal-open');
+  document.body.style.removeProperty('overflow');
+  document.body.style.removeProperty('padding-right');
+}
+
+function mostrarModal(id) {
+  const modal = initModal(id);
+  if (modal) {
+    // Asegurarse de que no haya residuos de modales anteriores
+    limpiarModal();
+    modal.show();
+  } else {
+    console.error(`Modal ${id} no encontrado`);
+  }
+}
+
 // ---- INIT ----
 window.initUsuarios = async function(){
+  console.log('Iniciando módulo usuarios...');
+  
+  // Verificar Bootstrap
+  if (!window.bootstrap) {
+    console.error('Bootstrap no está disponible');
+    showDiag('Error: Bootstrap no está disponible. Recargue la página.', true);
+    return;
+  }
+
+  // Inicializar modales
+  ['modalPersona', 'modalUsuario', 'modalPermiso', 'modalModulo'].forEach(id => {
+    const modal = initModal(id);
+    if (!modal) console.error(`Modal ${id} no encontrado`);
+  });
+
   const ping = await fetchJSON(apiBase + '_ping.php');
   if (!ping || ping.ok === false){
     showDiag(`PING FALLÓ o inválido:\n${JSON.stringify(ping,null,2)}`);

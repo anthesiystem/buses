@@ -1,5 +1,11 @@
 <?php
-// Ruta: /final/mapa/public/sections/usuarios/index.php
+// Si es una petición AJAX o se solicita sólo el contenido, incluye content.php
+if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || isset($_GET['content_only'])) {
+    include __DIR__ . '/content.php';
+    exit;
+}
+
+// Si no, es una carga directa y muestra la página completa
 ?>
 <!doctype html>
 <html lang="es">
@@ -10,16 +16,17 @@
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-        #main-content {
-    max-width: 90%;
-    padding-left: 12%;
-    padding-top: 5%;}
+    #main-content {
+      max-width: 90%;
+      padding-left: 12%;
+      padding-top: 5%;
+    }
   </style>
 </head>
 <body class="bg-light">
 
 <div class="container-fluid py-3">
-  <h3 class="mb-3">Gestión de Personas, Usuarios y Permisos</h3>
+  <h3 class="mb-3">Gestión de Usuarios</h3>
 
   <ul class="nav nav-tabs" id="tabUsuarios" role="tablist">
     <li class="nav-item" role="presentation">
@@ -302,7 +309,7 @@
 
 
 <!-- Módulo JS externo -->
-<script src="/final/mapa/public/sections/usuarios/usuarios.js?v=<?php echo time(); ?>"></script>
+<script src="<?= dirname($_SERVER['PHP_SELF']) ?>/usuarios.js?v=<?= time() ?>"></script>
 <script>
   // Arranque robusto: si el DOM ya está listo, inicializa; si no, espera.
   if (document.readyState !== 'loading') {
