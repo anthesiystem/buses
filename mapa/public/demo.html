@@ -1,76 +1,424 @@
-<!-- MAQUETA 1-C -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mapa · Lupa anclada (J/K/L)</title>
 <style>
-  .m1c{--border:#e8ebf1;--muted:#f7f9fc;--thead:#fff7fb;--thead-txt:#b1124b;
-       --ok:#0f6b3f;--okbg:#e7f6ec;--warn:#7a5a00;--warnbg:#fff6da;--off:#475569;--offbg:#eef1f4;--accent:#ec407a;}
-  .m1c .wrap{border:1px solid var(--border);border-radius:14px;background:#fff;padding:12px}
-  .m1c .tablebox{overflow:auto;border-radius:10px}
-  .m1c table{width:100%;border-collapse:separate;border-spacing:0;font-size:.9rem}
-  .m1c thead th{position:sticky;top:0;background:var(--thead);color:var(--thead-txt);
-                font-weight:900;border-bottom:1px solid var(--border);padding:.65rem .6rem;text-align:center}
-  .m1c tbody td{padding:.55rem .6rem;border-bottom:1px solid var(--border);background:#fff;vertical-align:middle}
-  .m1c tbody tr:nth-child(even) td{background:var(--muted)}
-  .m1c tbody tr:hover td{background:#fff2f7}
-  /* Acento izquierdo por categoría (usa variable) */
-  .m1c tr.accent td:first-child{position:relative}
-  .m1c tr.accent td:first-child::before{
-    content:"";position:absolute;left:-1px;top:-1px;bottom:-1px;width:4px;border-radius:4px 0 0 4px;background:var(--accent-color,#ec407a)
+  :root{
+    --bg:#eef1f5; --panel:#fff; --ink:#1d2430; --line:#e5e7eb;
   }
-  .m1c .chip{padding:.25rem .6rem;border-radius:999px;background:#f0f3f9;font-weight:800;font-size:.82rem;color:#334155}
-  .m1c .bus{font-weight:900;letter-spacing:.2px}
-  .m1c .ver{font-family:ui-monospace,monospace;background:#f2f4f9;border-radius:.4rem;padding:.22rem .45rem;font-weight:700}
-  .m1c .badge{padding:.3rem .5rem;border-radius:.45rem;font-weight:800;font-size:.82rem}
-  .m1c .b-ok{background:var(--okbg);color:var(--ok)}
-  .m1c .b-warn{background:var(--warnbg);color:var(--warn)}
-  .m1c .b-off{background:var(--offbg);color:var(--off)}
-  .m1c .progress{height:7px;background:#edf0f6;border-radius:999px;overflow:hidden}
-  .m1c .bar{height:100%;background:var(--accent)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,Arial}
+  .app{display:grid;grid-template-columns:76px 1fr 420px;gap:18px;min-height:100vh;padding:18px}
+  .sidebar{background:#1a2030;border-radius:18px;color:#fff;display:flex;flex-direction:column;align-items:center;padding:14px 8px;gap:12px}
+  .sb-logo{width:42px;height:42px;border-radius:12px;background:#0e1422;display:grid;place-items:center;font-weight:700}
+  .sb-item{width:100%;display:grid;place-items:center;height:54px;border-radius:14px;color:#d8deea;opacity:.9}
+  .sb-item.active{background:#10182a;color:#fff}
+  .main{display:flex;flex-direction:column;gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 25px rgba(0,0,0,.04)}
+  .card h3{margin:0;padding:12px 16px;border-bottom:1px solid var(--line);font-size:16px}
+  .map-card{position:relative;overflow:hidden}
+  .map-stage{position:relative;height:640px;overflow:hidden;border-radius:18px;isolation:isolate}
+  .toolbar{display:flex;gap:10px;padding:10px 12px;align-items:center}
+  .tab{background:#111827;color:#e5e7eb;border:1px solid #1f2937;border-radius:12px;padding:8px 12px;cursor:pointer}
+  .tab[aria-pressed="true"]{background:#0b1220;color:#fff;border-color:#0b1220}
+  .svg-host{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden}
+  .svg-host svg{width:100%;height:100%;max-width:1020px;display:block}
+
+  .legend{position:absolute;left:18px;bottom:16px;background:#ffffffcc;backdrop-filter:blur(2px);
+    border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:grid;gap:6px}
+  .leg-row{display:flex;align-items:center;gap:8px;color:#111827}
+  .sw{width:16px;height:16px;border:1px solid #9aa1ac;border-radius:3px}
+  .sw-ok{background:linear-gradient(135deg,#2e7d32,#74c476)}
+  .sw-pr{background:repeating-linear-gradient(135deg,#f9a825 0 6px,#fff 6px 12px)}
+  .sw-off{background:#d1d5db}
+
+  .detail{display:flex;flex-direction:column;gap:18px}
+  .meta{padding:12px 16px}
+  .meta h4{margin:.25rem 0 .25rem;font-size:18px}
+  .meta p{margin:.15rem 0;color:#4b5563}
+
+  .tip{position:absolute;right:16px;top:16px;background:#0c0f14;color:#eef3ff;border:1px solid #222834;
+       padding:10px 12px;border-radius:12px;min-width:240px;display:none;z-index:6}
+  .tip h4{margin:.1rem 0;font-size:14px}
+  .tip p{margin:0;color:#cfd5df;font-size:12px}
+
+  .mx path,.mx polygon,.mx rect{fill:#f3f4f6;stroke:#9aa1ac;stroke-width:.9;transition:filter .2s ease, opacity .2s ease}
+
+  .selected{filter:url(#dropShStrong);stroke:#3f8fff;stroke-width:1.9;animation:pulseStroke 1.6s ease-in-out infinite}
+  .selected-glow{filter:url(#glowBlue)}
+  .selected-dash{fill:none;stroke:#9fd0ff;stroke-width:2.1;stroke-dasharray:8 6;animation:dashMove 1.1s linear infinite}
+  @keyframes pulseStroke{0%,100%{stroke-opacity:.35}50%{stroke-opacity:.95}}
+  @keyframes dashMove{to{stroke-dashoffset:-28}}
+
+  .dim{opacity:.42;filter:saturate(.6) brightness(.96)}
+  .mode-k .dim,.mode-l .dim{filter:blur(.35px) saturate(.8) brightness(.96);opacity:.36}
+
+  .overlay{position:absolute;inset:0;pointer-events:none;z-index:5}
+  .focus-lens{position:absolute;inset:0}
+  .lens-svg{width:100%;height:100%}
+  .lens-clone{filter:url(#dropShStrong);transform-origin:center;transition:transform .28s ease, opacity .2s ease}
+  .lens-ring{position:absolute;display:none;border:2px dashed rgba(49,118,255,.55);border-radius:24px;box-shadow:0 8px 40px rgba(0,0,0,.1)}
 </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sb-logo">SB</div>
+    <div class="sb-item active" title="Tablero">🏠</div>
+    <div class="sb-item" title="Mapa">🗺️</div>
+    <div class="sb-item" title="Registros">📄</div>
+    <div class="sb-item" title="Catálogos">🗂️</div>
+    <div class="sb-item" title="Bitácora">🕓</div>
+    <div class="sb-item" title="Usuarios">👤</div>
+    <div class="sb-item" title="Buses">🚌</div>
+  </aside>
 
-<div class="m1c">
-  <div class="wrap">
-    <div class="tablebox">
-      <table>
-        <thead>
-          <tr>
-            <th>Categoría</th><th>Bus</th><th>Versión</th><th>Estatus</th><th style="min-width:150px">Avance</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Repite en foreach; cambia --accent-color por categoría si lo deseas -->
-          <tr class="accent" style="--accent-color:#22c55e">
-            <td><span class="chip">Migraciones</span></td>
-            <td class="bus">CUP (CERTIFICADO)</td>
-            <td><span class="ver">0.0.1</span></td>
-            <td><span class="badge b-ok">IMPLEMENTADO</span></td>
-            <td>
-              <div class="progress"><div class="bar" style="width:40%"></div></div>
-              <small>40%</small>
-            </td>
-          </tr>
+  <main class="main">
+    <div class="card map-card">
+      <div class="toolbar">
+        <button class="tab" data-mode="mode-j" aria-pressed="true">Opción J · Rectangular</button>
+        <button class="tab" data-mode="mode-k" aria-pressed="false">Opción K · Circular</button>
+        <button class="tab" data-mode="mode-l" aria-pressed="false">Opción L · Oval</button>
+      </div>
 
-          <tr class="accent" style="--accent-color:#6b7280">
-            <td><span class="chip">Nuevos</span></td>
-            <td class="bus">MJ (MANDAMIENTOS)</td>
-            <td><span class="ver">7.0.4</span></td>
-            <td><span class="badge b-off">SIN IMPLEMENTAR</span></td>
-            <td>
-              <div class="progress"><div class="bar" style="width:98%"></div></div>
-              <small>98%</small>
-            </td>
-          </tr>
+      <div class="map-stage mode-j" id="stage">
+        <div class="svg-host" id="svgHost"></div>
 
-          <tr class="accent" style="--accent-color:#f59e0b">
-            <td><span class="chip">Nuevos</span></td>
-            <td class="bus">RNAE (ARMAMENTO)</td>
-            <td><span class="ver">3.R1</span></td>
-            <td><span class="badge b-warn">PRUEBAS</span></td>
-            <td>
-              <div class="progress"><div class="bar" style="width:60%"></div></div>
-              <small>60%</small>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <div class="overlay">
+          <div class="focus-lens" id="focusLens" style="display:none">
+            <svg class="lens-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <!-- Este DIV se posiciona exactamente sobre la ventana de destino (útil para depurar) -->
+          <div class="lens-ring" id="lensRing"></div>
+
+          <div class="tip" id="tip">
+            <h4 id="tipTitle">Entidad</h4>
+            <p id="tipLine">Estatus: — | Avance: —%</p>
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="leg-row"><span class="sw sw-ok"></span> IMPLEMENTADO</div>
+          <div class="leg-row"><span class="sw sw-pr"></span> PRUEBAS</div>
+          <div class="leg-row"><span class="sw sw-off"></span> SIN IMPLEMENTAR</div>
+        </div>
+      </div>
     </div>
-  </div>
+  </main>
+
+  <aside class="detail">
+    <div class="card">
+      <h3>Detalle del Estado</h3>
+      <div class="meta">
+        <h4 id="mTitle">—</h4>
+        <p id="mL1">Estatus: —</p>
+        <p id="mL2">Avance: —%</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Registros (demo)</h3>
+      <div class="meta"><p>Integra aquí tus tablas/cards de registros.</p></div>
+    </div>
+  </aside>
 </div>
+
+<script>
+(async function(){
+  /* ====== CONFIG ====== */
+  const MAP_SRC = "mapa.svg";                 // tu mapa
+  const MAIN_GROUP_SELECTOR = null;           // ej: "#mx" si lo sabes
+  // Ventana de destino (cuadro rojo): porcentajes relativos al bbox del MAPA
+  // (ajusta xPct/yPct/wPct/hPct hasta que coincida con tu zona)
+  const LENS_ANCHOR = { xPct: 0.78, yPct: 0.35, wPct: 0.32, hPct: 0.34 };
+  const SCALE_MIN = 1.2, SCALE_MAX = 3.6;
+
+  /* ====== DOM ====== */
+  const stage   = document.getElementById('stage');
+  const host    = document.getElementById('svgHost');
+  const tip     = document.getElementById('tip');
+  const tipTitle= document.getElementById('tipTitle');
+  const tipLine = document.getElementById('tipLine');
+  const tabs    = document.querySelectorAll('.tab');
+  const focusLens = document.getElementById('focusLens');
+  const lensSvg   = focusLens.querySelector('svg');
+  const lensRing  = document.getElementById('lensRing');
+  const mTitle = document.getElementById('mTitle');
+  const mL1 = document.getElementById('mL1');
+  const mL2 = document.getElementById('mL2');
+
+  tabs.forEach(b=>b.addEventListener('click',()=>{
+    tabs.forEach(x=>x.setAttribute('aria-pressed','false'));
+    b.setAttribute('aria-pressed','true');
+    stage.className = 'map-stage ' + b.dataset.mode;
+    hideLens();
+    updateDim();
+  }));
+
+  /* ====== Carga SVG ====== */
+  const svgText = await fetch(MAP_SRC).then(r=>r.ok?r.text():Promise.reject())
+    .catch(()=>`<svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+      <g id="mx">
+        <path id="BCA" d="M60 60 H360 V220 H60 Z"/>
+        <path id="SON" d="M380 80 H720 V200 H380 Z"/>
+        <path id="OCC" d="M100 260 H340 V420 H100 Z"/>
+        <path id="SUR" d="M380 260 H720 V420 H380 Z"/>
+        <path id="PEN" d="M740 220 h40 v160 h-40 z"/>
+      </g>
+    </svg>`);
+  host.innerHTML = svgText;
+  const svg = host.querySelector('svg'); svg.classList.add('mx');
+  lensSvg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  injectDefs(svg);
+
+  // Grupo principal
+  let gMain = svg;
+  if (MAIN_GROUP_SELECTOR && svg.querySelector(MAIN_GROUP_SELECTOR)) {
+    gMain = svg.querySelector(MAIN_GROUP_SELECTOR);
+  } else {
+    gMain = detectMainGroup(svg);
+  }
+
+  tagHitAreas(gMain);
+  assignDemoData(gMain);
+
+  /* ====== Eventos ====== */
+  stage.addEventListener('mousemove', (ev)=>{
+    const t = ev.target.closest('.hit');
+    if(!t){ tip.style.display='none'; return; }
+    tip.style.display='block';
+    tip.style.right='16px'; tip.style.top='16px';
+    tipTitle.textContent = t.getAttribute('data-name')||t.id||'Entidad';
+    tipLine.textContent  = `Estatus: ${t.getAttribute('data-status')||'—'} | Avance: ${t.getAttribute('data-avance')||'—'}%`;
+  });
+
+  stage.addEventListener('click', (ev)=>{
+    const node = ev.target.closest('.hit');
+    if(!node) return;
+
+    svg.querySelectorAll('.selected').forEach(n=>n.classList.remove('selected','selected-glow'));
+    svg.querySelectorAll('.selected-dash').forEach(n=>n.remove());
+    node.classList.add('selected','selected-glow');
+
+    const dash = document.createElementNS('http://www.w3.org/2000/svg', node.tagName);
+    copyGeometry(node, dash);
+    dash.classList.add('selected-dash');
+    gMain.appendChild(dash);
+
+    showLensPinned(node, gMain);   // ⬅️ lupa anclada a la ventana
+    updateDim();
+
+    mTitle.textContent = node.getAttribute('data-name')||node.id||'Entidad';
+    mL1.textContent = 'Estatus: ' + (node.getAttribute('data-status')||'—');
+    mL2.textContent = 'Avance: ' + (node.getAttribute('data-avance')||'—') + '%';
+  });
+
+  function updateDim(){
+    const sel = svg.querySelector('.selected');
+    gMain.querySelectorAll('.hit').forEach(el=>{
+      el.classList.remove('dim');
+      if(sel && el!==sel) el.classList.add('dim');
+    });
+  }
+
+  /* ====== Lupa ANCLADA a la ventana de destino ====== */
+  function showLensPinned(node, group){
+  const vb = svg.viewBox.baseVal;
+  focusLens.style.display='block';
+  lensSvg.innerHTML='';
+  lensSvg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.width} ${vb.height}`);
+  lensSvg.setAttribute('preserveAspectRatio','xMidYMid meet');
+
+  // BBoxes en coordenadas del SVG raíz
+  const gb = bboxInRoot(group);
+  const sb = bboxInRoot(node);
+
+  // Ventana anclada (misma que ya usas)
+  const anchor = {
+    cx: gb.x + gb.width  * LENS_ANCHOR.xPct,
+    cy: gb.y + gb.height * LENS_ANCHOR.yPct,
+    w : gb.width  * LENS_ANCHOR.wPct,
+    h : gb.height * LENS_ANCHOR.hPct
+  };
+  ensureClipDefsAt(lensSvg, anchor);
+
+  // ====== CLON NORMALIZADO SIN TRANSFORMS + CTM GLOBAL ======
+  // 1) clon profundo del estado
+  const rawClone = node.cloneNode(true);
+  // 2) eliminar cualquier transform en el árbol clonado
+  stripTransforms(rawClone);
+  // 3) wrapper que aplicará:  CTM_del_estado  +  centrado + escala hacia la ventana
+  const wrap = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  wrap.appendChild(rawClone);
+  wrap.setAttribute('class','lens-clone'); // para el filtro/sombra
+
+  // Matriz CTM del estado hacia el root (incluye todos los transforms originales)
+  const M = node.getCTM(); // a,b,c,d,e,f
+
+  // Escala para que quepa dentro de la ventana anclada
+  const maxSide = Math.max(sb.width, sb.height);
+  const scale = clamp(SCALE_MIN, SCALE_MAX, (Math.min(anchor.w, anchor.h) * 0.85) / maxSide);
+
+  // Centros en root
+  const sCX = sb.x + sb.width/2, sCY = sb.y + sb.height/2;
+  const dx  = anchor.cx - sCX,   dy  = anchor.cy - sCY;
+
+  // ⚠️ Orden correcto:  T * M  (M primero → va a la DERECHA del atributo)
+  wrap.setAttribute(
+    'transform',
+    `translate(${dx} ${dy}) translate(${sCX} ${sCY}) scale(${scale}) translate(${-sCX} ${-sCY}) ` +
+    `matrix(${M.a} ${M.b} ${M.c} ${M.d} ${M.e} ${M.f})`
+  );
+
+  // Inserta según modo (rect/circle/oval) y muestra guía si quieres
+  const mode = [...stage.classList].find(c=>c.startsWith('mode-')) || 'mode-j';
+  if(mode === 'mode-j'){
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('clip-path','url(#clipRectAnchor)');
+    g.appendChild(wrap);
+    lensSvg.appendChild(g);
+    placeRing(anchor);
+  }else if(mode === 'mode-k'){
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('clip-path','url(#clipCircleAnchor)');
+    g.appendChild(wrap);
+    lensSvg.appendChild(g);
+    placeRing(anchor,true);
+  }else{
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('clip-path','url(#clipOvalAnchor)');
+    g.appendChild(wrap);
+    lensSvg.appendChild(g);
+    placeRing(anchor);
+  }
+}
+
+
+  function hideLens(){
+    focusLens.style.display='none';
+    lensRing.style.display='none';
+    lensSvg.innerHTML='';
+  }
+
+  /* ====== Utilidades ====== */
+  function detectMainGroup(svg){
+    let best = svg, bestCount = 0;
+    svg.querySelectorAll('g').forEach(g=>{
+      const n = g.querySelectorAll('path,polygon,rect').length;
+      if(n > bestCount){ bestCount = n; best = g; }
+    });
+    return best;
+  }
+
+  function injectDefs(svg){
+    const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+    defs.innerHTML = `
+      <filter id="dropShStrong" x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="2.5" stdDeviation="3.2" flood-color="#4192ff" flood-opacity=".55"/>
+      </filter>
+      <filter id="glowBlue" x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    `;
+    svg.prepend(defs);
+  }
+
+  function ensureClipDefsAt(svgEl, a){
+    // Crea/actualiza clipPaths en la posición de la ventana (anchor)
+    let defs = svgEl.querySelector('defs');
+    if(!defs){ defs = document.createElementNS('http://www.w3.org/2000/svg','defs'); svgEl.prepend(defs); }
+    defs.innerHTML = '';
+
+    // Rect redondeado
+    const clipRect = document.createElementNS('http://www.w3.org/2000/svg','clipPath');
+    clipRect.setAttribute('id','clipRectAnchor');
+    const rr = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rr.setAttribute('x', a.cx - a.w/2); rr.setAttribute('y', a.cy - a.h/2);
+    rr.setAttribute('width', a.w); rr.setAttribute('height', a.h); rr.setAttribute('rx', 24);
+    clipRect.appendChild(rr);
+
+    // Círculo
+    const clipCircle = document.createElementNS('http://www.w3.org/2000/svg','clipPath');
+    clipCircle.setAttribute('id','clipCircleAnchor');
+    const r = Math.min(a.w, a.h)/2;
+    const cc = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    cc.setAttribute('cx', a.cx); cc.setAttribute('cy', a.cy); cc.setAttribute('r', r);
+    clipCircle.appendChild(cc);
+
+    // Óvalo
+    const clipOval = document.createElementNS('http://www.w3.org/2000/svg','clipPath');
+    clipOval.setAttribute('id','clipOvalAnchor');
+    const ov = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+    ov.setAttribute('cx', a.cx); ov.setAttribute('cy', a.cy); ov.setAttribute('rx', a.w/2); ov.setAttribute('ry', a.h/2);
+    clipOval.appendChild(ov);
+
+    defs.appendChild(clipRect);
+    defs.appendChild(clipCircle);
+    defs.appendChild(clipOval);
+  }
+
+  function placeRing(a, circle=false){
+    // Dibuja/posiciona una caja HTML sobre la ventana (solo guía visual)
+    const m = svg.getScreenCTM();
+    const pC = svg.createSVGPoint(); pC.x=a.cx; pC.y=a.cy;
+    const pR = svg.createSVGPoint(); pR.x=a.cx + a.w/2; pR.y=a.cy + a.h/2;
+    const c = pC.matrixTransform(m); const r = pR.matrixTransform(m);
+
+    const stageRect = stage.getBoundingClientRect();
+    const left = c.x - stageRect.left - (r.x-c.x);
+    const top  = c.y - stageRect.top  - (r.y-c.y);
+    const w = (r.x-c.x)*2; const h = (r.y-c.y)*2;
+
+    Object.assign(lensRing.style, {
+      left: `${left}px`, top: `${top}px`, width: `${w}px`, height: `${h}px`,
+      borderRadius: circle ? `${Math.min(w,h)/2}px` : '24px', display:'block'
+    });
+  }
+
+  function tagHitAreas(root){
+    root.querySelectorAll('path,polygon,rect').forEach(n=>{
+      n.classList.add('hit');
+      n.setAttribute('data-name', n.getAttribute('title')||n.getAttribute('data-name')||n.id||'Entidad');
+    });
+  }
+
+  function copyGeometry(src, dst){
+    for(const a of src.getAttributeNames()){
+      if(['d','points','x','y','width','height','rx','ry','transform'].includes(a)){
+        dst.setAttribute(a, src.getAttribute(a));
+      }
+    }
+    if(src.hasAttribute('fill')) dst.setAttribute('fill', src.getAttribute('fill'));
+    dst.setAttribute('stroke', '#3f8fff');
+  }
+
+  function clamp(min, max, v){ return Math.max(min, Math.min(max, v)); }
+
+  function bboxInRoot(el){
+    const b = el.getBBox();
+    const m = el.getCTM();
+    const p1 = svg.createSVGPoint(); p1.x=b.x; p1.y=b.y;
+    const p2 = svg.createSVGPoint(); p2.x=b.x+b.width; p2.y=b.y;
+    const p3 = svg.createSVGPoint(); p3.x=b.x; p3.y=b.y+b.height;
+    const p4 = svg.createSVGPoint(); p4.x=b.x+b.width; p4.y=b.y+b.height;
+    const P1 = p1.matrixTransform(m), P2 = p2.matrixTransform(m),
+          P3 = p3.matrixTransform(m), P4 = p4.matrixTransform(m);
+    const xs=[P1.x,P2.x,P3.x,P4.x], ys=[P1.y,P2.y,P3.y,P4.y];
+    const minX=Math.min(...xs), maxX=Math.max(...xs);
+    const minY=Math.min(...ys), maxY=Math.max(...ys);
+    return { x:minX, y:minY, width:maxX-minX, height:maxY-minY };
+  }
+
+  function assignDemoData(root){
+    const sts = ['IMPLEMENTADO','PRUEBAS','MIXTO','SIN'];
+    root.querySelectorAll('.hit').forEach((el,i)=>{
+      el.setAttribute('data-status', sts[i%sts.length]);
+      el.setAttribute('data-avance', [100,70,45,15][i%4]);
+    });
+  }
+})();
+</script>
+</body>
+</html>

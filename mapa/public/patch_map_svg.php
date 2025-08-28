@@ -1,12 +1,28 @@
 <?php
-// tools/patch_map_svg.php
-// Parchea mapa.svg y añade class + data-entidad-id/nombre a cada <path id="MX-XXX">
+require_once __DIR__ . '/../server/mapag/get_estados_permitidos.php';
 
-$src = __DIR__ . 'mapa.svg';           // C:\Wemp\nginx\html\final\mapa\public\mapa.svg
-$dst = __DIR__ . 'mapa.patched.svg';   // salida
+// Debug mode
+if (isset($_GET['debug']) && $_GET['debug'] === 'permisos') {
+    header('Location: /final/mapa/public/sections/mapag/debug_permisos.php');
+    exit;
+}
 
-$svg = file_get_contents($src);
-if ($svg === false) { die("No pude leer $src\n"); }
+// Obtener los estados permitidos para el usuario actual
+$estadosPermitidos = getEstadosPermitidos();
+$idsPermitidos = array_column($estadosPermitidos, 'ID');
+
+// Debug log
+error_log("Usuario actual: " . ($_SESSION['user_id'] ?? $_SESSION['usuario']['ID'] ?? 'no-id'));
+error_log("Nivel: " . ($_SESSION['usuario']['nivel'] ?? $_SESSION['nivel'] ?? 'no-nivel'));
+error_log("Estados permitidos: " . print_r($estadosPermitidos, true));
+error_log("IDs permitidos: " . print_r($idsPermitidos, true));
+
+// Leer el SVG
+$svgPath = __DIR__ . '/mapa.svg';
+$svg = file_get_contents($svgPath);
+if ($svg === false) {
+    die("No se pudo leer el archivo SVG");
+}
 
 // Mapa: código → [ID, NOMBRE]
 $ENT = [
@@ -45,45 +61,71 @@ $ENT = [
 ];
 
 $patched = preg_replace_callback(
-  '/<path\b([^>]*\bid="MX-([A-Z]{3})"[^>]*)>/u',
-  function($m) use ($ENT){
-    $attrs = $m[1];
-    $code  = $m[2];
-    if (!isset($ENT[$code])) return $m[0];
+    '/<path\b([^>]*\bid="MX-([A-Z]{3})"[^>]*)>/u',
+    function($m) use ($ENT, $idsPermitidos) {
+        $attrs = $m[1];
+        $code = $m[2];
+        
+        if (!isset($ENT[$code])) {
+            return $m[0];
+        }
 
-    [$id,$name] = $ENT[$code];
+        [$id, $name] = $ENT[$code];
+        
+        // Determina si el estado está permitido
+        $isPermitido = in_array($id, $idsPermitidos, true);
+        error_log("Estado $name (ID: $id) - Permitido: " . ($isPermitido ? 'SI' : 'NO'));
+        
+        // Maneja las clases CSS
+        if (preg_match('/\bclass="([^"]*)"/u', $attrs, $mc)) {
+            $classes = preg_split('/\s+/', trim($mc[1]));
+            $classes = array_values(array_filter($classes, fn($c) => $c !== 'mx-state-disabled' && $c !== ''));
+            
+            // Asegura que tenga la clase mx-state
+            if (!in_array('mx-state', $classes)) {
+                $classes[] = 'mx-state';
+            }
+            
+            // Maneja is-blocked según permisos
+            $blockIdx = array_search('is-blocked', $classes);
+            if ($isPermitido && $blockIdx !== false) {
+                unset($classes[$blockIdx]);
+            } elseif (!$isPermitido && $blockIdx === false) {
+                $classes[] = 'is-blocked';
+            }
+            
+            $attrs = preg_replace('/\bclass="[^"]*"/u', 'class="'.implode(' ', $classes).'"', $attrs);
+        } else {
+            $attrs .= ' class="mx-state'.(!$isPermitido ? ' is-blocked' : '').'"';
+        }
 
-    // --- class: añade mx-state/is-blocked, quita mx-state-disabled si existiera
-    if (preg_match('/\bclass="([^"]*)"/u', $attrs, $mc)) {
-      $classes = preg_split('/\s+/', trim($mc[1]));
-      $classes = array_values(array_unique(array_filter($classes, fn($c)=>$c!=='mx-state-disabled' && $c!=='')));
-      if (!in_array('mx-state', $classes, true))   $classes[] = 'mx-state';
-      if (!in_array('is-blocked', $classes, true)) $classes[] = 'is-blocked';
-      $attrs = preg_replace('/\bclass="[^"]*"/u', 'class="'.implode(' ', $classes).'"', $attrs);
-    } else {
-      $attrs .= ' class="mx-state is-blocked"';
-    }
+        // Añade o actualiza los atributos data-
+        if (!preg_match('/\bdata-entidad-id="/u', $attrs)) {
+            $attrs .= ' data-entidad-id="'.$id.'"';
+        } else {
+            $attrs = preg_replace('/\bdata-entidad-id="[^"]*"/u', 'data-entidad-id="'.$id.'"', $attrs);
+        }
 
-    // --- data-entidad-id
-    if (!preg_match('/\bdata-entidad-id="/u', $attrs)) {
-      $attrs .= ' data-entidad-id="'.$id.'"';
-    } else {
-      $attrs = preg_replace('/\bdata-entidad-id="[^"]*"/u', 'data-entidad-id="'.$id.'"', $attrs);
-    }
+        if (!preg_match('/\bdata-entidad-nombre="/u', $attrs)) {
+            $attrs .= ' data-entidad-nombre="'.htmlspecialchars($name, ENT_QUOTES, 'UTF-8').'"';
+        } else {
+            $attrs = preg_replace('/\bdata-entidad-nombre="[^"]*"/u', 'data-entidad-nombre="'.htmlspecialchars($name, ENT_QUOTES, 'UTF-8').'"', $attrs);
+        }
 
-    // --- data-entidad-nombre
-    if (!preg_match('/\bdata-entidad-nombre="/u', $attrs)) {
-      $attrs .= ' data-entidad-nombre="'.htmlspecialchars($name, ENT_QUOTES, 'UTF-8').'"';
-    } else {
-      $attrs = preg_replace('/\bdata-entidad-nombre="[^"]*"/u', 'data-entidad-nombre="'.htmlspecialchars($name, ENT_QUOTES, 'UTF-8').'"', $attrs);
-    }
-
-    return '<path'.$attrs.'>';
-  },
-  $svg
+        return '<path'.$attrs.'>';
+    },
+    $svg
 );
 
-if ($patched === null) { die("Regex error\n"); }
+if ($patched === null) {
+    die("Error en el procesamiento del SVG");
+}
 
-file_put_contents($dst, $patched) || die("No pude escribir $dst\n");
-echo "OK -> $dst\n";
+// Headers para evitar caché
+header('Content-Type: image/svg+xml');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+// Envía el SVG modificado
+echo $patched;

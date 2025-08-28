@@ -1,5 +1,5 @@
 // /final/mapa/server/mapag/mapageneral.js
-console.log("mapageneral.js (general) cargado");
+console.log("mapageneral.js (general) cargado v2");
 
 // Reintentos controlados
 window.reintentosMapa ??= 0;
@@ -13,8 +13,12 @@ window.MAX_REINTENTOS_MAPA ??= 2;
     const colorConcluido   = s.dataset.colorConcluido   || "#95e039";
     const colorSinEjecutar = s.dataset.colorSinEjecutar || "gray";
     const colorOtro        = s.dataset.colorOtro        || "#de4f33";
+    const colorBloqueado   = "#B0B0B0";  // Color para estados sin permiso
     const endpointDatos    = s.dataset.urlDatos   || "/final/mapa/server/mapag/generalindex.php";
     const endpointDetalle  = s.dataset.urlDetalle || "/final/mapa/server/mapag/detalle.php";
+
+    // Obtener permisos del objeto global
+    const permisosGenerales = window.__ACL_GENERAL__ || { entidades: [], buses: [] };
 
     // Tooltip único
     let tooltip = document.getElementById("tooltipMapa");
@@ -52,12 +56,32 @@ window.MAX_REINTENTOS_MAPA ??= 2;
       setTimeout(() => resolve(), 3000); // red de seguridad
     });
 
-    // 1) Traer datos y esperar estadoMap
+    // 1) Obtener permisos y datos
     Promise.all([fetchJsonSafe(endpointDatos), esperarEstadoMap]).then(([raw]) => {
+      // Obtener permisos del objeto global
+      const permisos = window.__ACL_GENERAL__ || { entidades: [], buses: [] };
+      console.log('Permisos cargados:', permisos);
+      console.log('Datos crudos del servidor:', raw);
+      
       const data = {};
-      Object.keys(raw || {}).forEach(k => { data[normalize(k)] = String(raw[k] ?? "").toUpperCase().trim(); });
+      Object.keys(raw || {}).forEach(k => {
+        const estadoData = raw[k];
+        const estadoNormalizado = normalize(k);
+        console.log(`Procesando estado ${k}:`, estadoData);
+        
+        // Solo incluir estados que el usuario tenga permiso de ver
+        if (typeof estadoData === 'object' && estadoData.entidad) {
+          // Si el estado pertenece a una entidad permitida
+          if (permisos.entidades.includes(estadoData.entidad)) {
+            data[estadoNormalizado] = estadoData;
+          }
+        } else {
+          // Compatibilidad con formato anterior
+          data[estadoNormalizado] = estadoData;
+        }
+      });
 
-      // 2) Esperar a que el SVG y las 3 leyendas existan
+    // 2) Esperar a que el SVG y las 3 leyendas existan
       const wait = setInterval(() => {
         const paths = document.querySelectorAll('path[id^="MX-"]');
         const a = document.getElementById("legendConcluido");
@@ -66,31 +90,137 @@ window.MAX_REINTENTOS_MAPA ??= 2;
         if (!paths.length || !a || !b || !c) return; // aún no está todo
         clearInterval(wait);
 
+        // 🎨 INYECTAR FILTROS SVG ELEGANTES (como en demo.html)
+        const svg = document.querySelector('#mapa svg');
+        if (svg && !svg.querySelector('#dropShadowBlue')) {
+          let defs = svg.querySelector('defs');
+          if (!defs) {
+            defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            svg.insertBefore(defs, svg.firstChild);
+          }
+          
+          // Filtro de sombra azul elegante
+          const dropShadowBlue = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+          dropShadowBlue.setAttribute('id', 'dropShadowBlue');
+          dropShadowBlue.setAttribute('x', '-40%');
+          dropShadowBlue.setAttribute('y', '-40%');
+          dropShadowBlue.setAttribute('width', '180%');
+          dropShadowBlue.setAttribute('height', '180%');
+          dropShadowBlue.innerHTML = `
+            <feDropShadow dx="0" dy="2.5" stdDeviation="3.2" flood-color="#4192ff" flood-opacity="0.65"/>
+          `;
+          
+          // Filtro de glow azul intenso
+          const glowBlue = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+          glowBlue.setAttribute('id', 'glowBlue');
+          glowBlue.setAttribute('x', '-80%');
+          glowBlue.setAttribute('y', '-80%');
+          glowBlue.setAttribute('width', '260%');
+          glowBlue.setAttribute('height', '260%');
+          glowBlue.innerHTML = `
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          `;
+          
+          defs.appendChild(dropShadowBlue);
+          defs.appendChild(glowBlue);
+          
+          console.log('✨ Filtros SVG elegantes inyectados');
+        }
+
         // 🔹 PINTAR LEYENDAS (aquí ya existen)
         a.setAttribute("fill", colorConcluido);
         b.setAttribute("fill", colorOtro);
-        c.setAttribute("fill", colorSinEjecutar);
-
-        // 3) Pintar estados
+        c.setAttribute("fill", colorSinEjecutar);        // 3) Pintar estados
         const estMap = window.estadoMap || {};
         let pintados = 0;
+
+        // Debug de permisos disponibles
+        console.log('🔐 Permisos disponibles:', {
+          entidades: permisosGenerales.entidades,
+          buses: permisosGenerales.buses
+        });
 
         paths.forEach(path => {
           const nombre = estMap[path.id];
           if (!nombre) return;
 
-          const key = normalize(nombre);
-          const estatus = data[key] || ""; // IMPLEMENTADO / SIN IMPLEMENTAR / PRUEBAS / MIXTO
+          // Verificar permisos primero
+          const entidadId = parseInt(path.getAttribute('data-entidad-id'), 10);
+          // Convertir a número el ID de entidad para comparación estricta
+          const tienePermiso = permisosGenerales.entidades.some(id => parseInt(id) === entidadId);
+          console.log(`🔒 Estado ${nombre} (ID: ${entidadId}) - Permiso: ${tienePermiso}`, {
+              entidadId,
+              tipo: typeof entidadId,
+              permisosDisponibles: permisosGenerales.entidades,
+              encontrado: tienePermiso
+          });
 
-          if (estatus === "IMPLEMENTADO")         path.style.fill = colorConcluido;
-          else if (estatus === "SIN IMPLEMENTAR") path.style.fill = colorSinEjecutar;
-          else if (estatus)                       path.style.fill = colorOtro;
+          // Si no tiene permiso, pintar gris y deshabilitar
+          if (!tienePermiso) {
+            path.style.fill = colorBloqueado;
+            path.style.cursor = 'not-allowed';
+            path.classList.add('estado-bloqueado');
+            return;
+          }
+
+          const key = normalize(nombre);
+          const estadoData = data[key];
+          console.log(`Estado ${nombre}:`, { estadoData, key });
+
+          // Color por defecto si no hay datos
+          let colorFinal = colorSinEjecutar;
+
+          if (estadoData) {
+              const estatus = (typeof estadoData === 'object' ? estadoData.estado : estadoData || "").toString().toUpperCase().trim();
+              console.log(`Estado ${nombre} - Estatus:`, estatus);
+
+              switch (estatus) {
+                  case "IMPLEMENTADO":
+                      colorFinal = colorConcluido;
+                      break;
+                  case "SIN IMPLEMENTAR":
+                      colorFinal = colorSinEjecutar;
+                      break;
+                  case "PRUEBAS":
+                  case "EN PRUEBAS":
+                      colorFinal = colorOtro;
+                      break;
+                  default:
+                      if (estatus) {
+                          console.log(`Estado desconocido para ${nombre}:`, estatus);
+                          colorFinal = colorOtro;
+                      }
+              }
+          }
+
+          path.style.fill = colorFinal;
 
           if (!path.dataset.listenersBound) {
             path.addEventListener("mouseenter", () => { tooltip.textContent = nombre; tooltip.style.display = "block"; });
             path.addEventListener("mousemove", (e) => { tooltip.style.left = (e.pageX + 10) + "px"; tooltip.style.top = (e.pageY + 10) + "px"; });
             path.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
             path.addEventListener("click", () => {
+              // Remover efecto de todos los estados
+              document.querySelectorAll('path[id^="MX-"]').forEach(p => {
+                p.classList.remove('estado-seleccionado');
+                // Resetear estilos inline
+                p.style.stroke = '';
+                p.style.strokeWidth = '';
+                p.style.strokeDasharray = '';
+                p.style.filter = '';
+                p.style.animation = '';
+              });
+              
+              // Agregar borde punteado al estado seleccionado
+              path.classList.add('estado-seleccionado');
+              
+              console.log('✨ Estado seleccionado:', nombre, '- Clase aplicada:', path.classList.contains('estado-seleccionado'));
+              
               const det = document.getElementById("detalle");
               document.getElementById("estadoNombre").innerText = nombre;
               det.setAttribute("data-estado", nombre);
@@ -99,10 +229,29 @@ window.MAX_REINTENTOS_MAPA ??= 2;
                   <div class="spinner-border"></div>
                   <div class="mt-2">Cargando detalle…</div>
                 </div>`;
-              fetch(`${endpointDetalle}?estado=${encodeURIComponent(nombre)}`, { cache:"no-store" })
+              
+              // Obtener permisos
+              const permisos = window.__ACL_GENERAL__ || { entidades: [], buses: [] };
+              
+              // Agregar los buses permitidos como parámetro
+              const url = `${endpointDetalle}?estado=${encodeURIComponent(nombre)}&buses=${permisos.buses.join(',')}`;
+              fetch(url, { 
+                cache: "no-store",
+                headers: {
+                  'X-Permitted-Buses': permisos.buses.join(','),
+                  'X-Permitted-Entities': permisos.entidades.join(',')
+                }
+              })
                 .then(r => r.text())
-                .then(html => { det.innerHTML = html; })
-                .catch(e => { console.error("detalle.php:", e); det.innerHTML = `<div class="alert alert-danger">Error al cargar detalle</div>`; });
+                .then(html => { 
+                  det.innerHTML = html; 
+                })
+                .catch(e => { 
+                  console.error("detalle.php:", e); 
+                  det.innerHTML = `<div class="alert alert-danger">Error al cargar detalle</div>`;
+                  // Remover borde en caso de error
+                  path.classList.remove('estado-seleccionado');
+                });
             });
             path.dataset.listenersBound = "1";
           }

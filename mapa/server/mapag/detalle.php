@@ -12,6 +12,83 @@ $puedeCrearComentarios = estaAutenticado() && tienePermiso('create', $estado);
 
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
+// Obtener información del usuario
+$userId = (int)($_SESSION['user_id'] ?? $_SESSION['usuario']['ID'] ?? 0);
+$nivel = (int)($_SESSION['usuario']['nivel'] ?? $_SESSION['nivel'] ?? 0);
+
+// Verificar permisos si no es admin
+$wherePermisos = "";
+if ($nivel < 3) {
+    // Obtener el ID del módulo mapa_general
+    $modId = 10;
+    try {
+        $stmMod = $pdo->prepare("SELECT ID FROM modulo WHERE descripcion = 'mapa_general' LIMIT 1");
+        if ($stmMod->execute() && ($row = $stmMod->fetch(PDO::FETCH_ASSOC))) {
+            $modId = (int)$row['ID'];
+        }
+    } catch (\Throwable $e) { 
+        error_log("Error obteniendo módulo: " . $e->getMessage());
+    }
+
+    // Obtener permisos del usuario
+    $stmtPerm = $pdo->prepare("
+        SELECT FK_entidad, FK_bus 
+        FROM permiso_usuario 
+        WHERE Fk_usuario = ? 
+        AND Fk_modulo = ? 
+        AND activo = 1
+    ");
+    $stmtPerm->execute([$userId, $modId]);
+    $permisos = $stmtPerm->fetchAll(PDO::FETCH_ASSOC);
+
+    error_log("Usuario: $userId, Módulo: $modId, Nivel: $nivel");
+    error_log("Permisos encontrados: " . print_r($permisos, true));
+
+    $entidades = [];
+    $buses = [];
+    $tienePermisoTotal = false;
+
+    foreach ($permisos as $p) {
+        if ($p['FK_entidad'] === null || $p['FK_bus'] === null) {
+            $tienePermisoTotal = true;
+            break;
+        }
+        if ($p['FK_entidad'] > 0) $entidades[] = (int)$p['FK_entidad'];
+        if ($p['FK_bus'] > 0) $buses[] = (int)$p['FK_bus'];
+    }
+
+    if (!$tienePermisoTotal) {
+        // Primero verificar que el usuario tenga permiso para este estado específico
+        $stmtEstado = $pdo->prepare("
+            SELECT ID 
+            FROM entidad 
+            WHERE UPPER(TRIM(descripcion)) = UPPER(TRIM(?)) 
+            AND activo = 1 
+            LIMIT 1
+        ");
+        $stmtEstado->execute([$estado]);
+        $entidadId = $stmtEstado->fetchColumn();
+        
+        error_log("Verificando permisos para estado: $estado (ID: $entidadId)");
+        
+        if (!in_array($entidadId, $entidades)) {
+            error_log("Usuario $userId no tiene permiso para el estado $estado");
+            $wherePermisos .= " AND 1=0"; // No mostrar nada
+        } else {
+            // Si tiene permiso para el estado, aplicar filtro combinado de estado y bus
+            $wherePermisos .= " AND EXISTS (
+                SELECT 1 
+                FROM permiso_usuario pu 
+                WHERE pu.Fk_usuario = " . $userId . "
+                AND pu.Fk_modulo = " . $modId . "
+                AND pu.activo = 1
+                AND pu.Fk_entidad = r.Fk_entidad
+                AND pu.Fk_bus = r.Fk_bus
+            )";
+        }
+    }
+}
+
 $sql = "
 SELECT 
     r.ID,
@@ -29,32 +106,33 @@ SELECT
 
     b.descripcion  AS bus_nombre,
     eb.descripcion AS estado_nombre,
-    t.numero_version AS version,          -- ✔ viene de tecnologia
-    t.descripcion   AS tecnologia,        -- ✔ viene de tecnologia
-    COALESCE(NULLIF(TRIM(d.siglas),''), d.descripcion) AS dependencia,  -- ← aquí las SIGLAS
+    t.numero_version AS version,
+    t.descripcion   AS tecnologia,
+    COALESCE(NULLIF(TRIM(d.siglas),''), d.descripcion) AS dependencia,
     e.descripcion AS entidad,
     c.descripcion AS categoria,
     en.descripcion AS motor_base_nombre,
     et.descripcion AS etapa,
-    et.avance      AS avance              -- ✔ porcentaje desde etapa
+    et.avance      AS avance
 FROM registro r
 INNER JOIN entidad     e  ON e.ID  = r.Fk_entidad
 INNER JOIN estado_bus  eb ON eb.ID = r.Fk_estado_bus
-LEFT  JOIN bus         b  ON b.ID  = r.Fk_bus 
-                         AND b.activo = 1                  -- 🔹 sólo buses activos
+LEFT  JOIN bus         b  ON b.ID  = r.Fk_bus AND b.activo = 1
 LEFT  JOIN dependencia d  ON d.ID  = r.Fk_dependencia
 INNER JOIN categoria   c  ON c.ID  = r.Fk_categoria
 INNER JOIN motor_base  en ON en.ID = r.Fk_motor_base
 INNER JOIN tecnologia  t  ON t.ID  = r.Fk_tecnologia
 LEFT  JOIN etapa       et ON et.ID = r.Fk_etapa
 WHERE UPPER(TRIM(e.descripcion)) = UPPER(TRIM(:estado))
-  AND r.activo = 1                                         -- 🔹 sólo registros activos
+  AND r.activo = 1
+  $wherePermisos
 ORDER BY FIELD(c.descripcion, 'Productivos','Centrales','Migraciones','Pruebas','PRUEBAS-MIGRADOS'),
          c.descripcion,
          b.descripcion
 ";
+
 $stmt = $pdo->prepare($sql);
-$stmt->bindParam(':estado', $estado, PDO::PARAM_STR);
+$stmt->bindParam(':estado', $estado);
 $stmt->execute();
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -68,12 +146,79 @@ foreach ($rows as $row) {
 }
 
 // Encabezado
+/* Función para obtener el escudo del estado */
+function obtenerEscudoEstado($nombreEstado) {
+    // Mapeo de nombres de estado a archivos de escudo
+    $mapeoEscudos = [
+        'AGUASCALIENTES' => 'Aguascalientes.png',
+        'BAJA CALIFORNIA' => 'Baja California.png',
+        'BAJA CALIFORNIA SUR' => 'Baja California Sur.png',
+        'CAMPECHE' => 'Campeche.png',
+        'CHIAPAS' => 'Chiapas.png',
+        'CHIHUAHUA' => 'Chihuahua.png',
+        'CIUDAD DE MEXICO' => 'Ciudad de Mexido.png', // Nombre del archivo tiene typo
+        'COAHUILA' => 'Coahuila.png',
+        'COLIMA' => 'Colima.png',
+        'DURANGO' => 'Durango.png',
+        'ESTADO DE MEXICO' => 'Estado de Mexico.png',
+        'GUANAJUATO' => 'Guanajuato.png',
+        'GUERRERO' => 'Guerrero.png',
+        'HIDALGO' => 'Hidalgo.png',
+        'JALISCO' => 'Jalisco.png',
+        'MICHOACAN' => 'Michoacan.png',
+        'MORELOS' => 'Morelos.png',
+        'NAYARIT' => 'Nayarit.png',
+        'NUEVO LEON' => 'Nuevo Leon.png',
+        'OAXACA' => 'Oaxaca.png',
+        'PUEBLA' => 'Puebla.png',
+        'QUERETARO' => 'Queretaro.png',
+        'QUINTANA ROO' => 'Quintana Roo.png',
+        'SAN LUIS POTOSI' => 'San Luis Potosi.png',
+        'SINALOA' => 'Sinaloa.png',
+        'SONORA' => 'Sonora.png',
+        'TABASCO' => 'Tabasco.png',
+        'TAMAULIPAS' => 'Tamaulipas.png',
+        'TLAXCALA' => 'Tlaxcala.png',
+        'VERACRUZ' => 'Veracruz.png',
+        'YUCATAN' => 'Yucatan.png',
+        'ZACATECAS' => 'Zacatecas.png'
+    ];
+    
+    $estadoNormalizado = strtoupper(trim($nombreEstado));
+    
+    if (isset($mapeoEscudos[$estadoNormalizado])) {
+        return "/final/mapa/public/img/escudos/" . $mapeoEscudos[$estadoNormalizado];
+    }
+    
+    return null; // No se encontró escudo
+}
+
+$escudoEstado = obtenerEscudoEstado($estado);
+
 echo '<div class="float-end">';
 echo '<button class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#modalDetalles">
         <i class="bi bi-table"></i> VER DETALLES
       </button>';
 echo '</div>';
-echo "<h3><strong>TOTAL DE BUSES:</strong> $total</h3>";
+
+// Mostrar encabezado con escudo del estado
+echo '<div class="card-estado mb-3">';
+echo '<div class="estado-header">';
+echo '<div class="estado-icon">';
+if ($escudoEstado) {
+    echo '<img src="' . h($escudoEstado) . '" alt="Escudo de ' . h($estado) . '">';
+} else {
+    // Fallback: mostrar las primeras dos letras del estado
+    echo strtoupper(substr($estado, 0, 2));
+}
+echo '</div>';
+echo '<div class="estado-info flex-grow-1">';
+echo '<h3>' . h(strtoupper($estado)) . '</h3>';
+echo '<h5>MAPA GENERAL</h5>';
+echo '<div class="estado-kv">CANTIDAD DE BUSES: ' . (int)$total . '</div>';
+echo '</div>';
+echo '</div>';
+echo '</div>';
 
 // Orden preferido de categorías
 $orden = ['Productivos','Centrales','Migraciones','Pruebas'];
@@ -96,6 +241,17 @@ $estatusClass = function($tx) {
   return 'b-off';
 };
 ?>
+
+<!-- ESTILOS PARA ENCABEZADO DEL ESTADO -->
+<style>
+  .card-estado{border-radius:18px;background:;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:18px}
+  .estado-header{display:flex;align-items:center;gap:14px}
+  .estado-icon{width:15%;border-radius:18px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:22px;overflow:hidden;background: #a2a2a25c;}
+  .estado-icon img{width:100%;height:100%;object-fit:cover}
+  .estado-info h3{font-size:22px;font-weight:800;margin:0;color:#111827;line-height:1.15}
+  .estado-info h5{font-size:15px;font-weight:700;margin:.1rem 0 0;color:#374151}
+  .estado-kv{font-weight:800;margin-top:8px;color:#111827}
+</style>
 
 <!-- ESTILOS Opción C -->
 <style>
@@ -224,18 +380,16 @@ $estatusClass = function($tx) {
               $por = max(0, min(100, (int)($row['avance'] ?? 0)));
               $dep = $estatusClass($row['dependencia'] ?? '');
               
-              // Botón de comentarios HTML
-              $btnComentarios = $puedeVerComentarios ? 
-                  "<button class='btn-comentarios modalbitacora' 
-                          data-bs-toggle='modal' 
-                          data-bs-target='#modalComentarios' 
-                          data-bs-id='" . (int)$row['ID'] . "'
-                          data-bus-nombre='" . h($row['bus_nombre']) . "'
-                          data-estado='" . h($estado) . "'
-                          data-puede-crear='1'
-                          title='Ver comentarios'>
-                      <i class='bi bi-chat-dots-fill'></i>
-                  </button>" : "";
+              // Botón de comentarios HTML - Ahora siempre visible, solo lectura
+              $btnComentarios = "<button class='btn-comentarios modalbitacora' 
+                      data-bs-toggle='modal' 
+                      data-bs-target='#modalComentarios' 
+                      data-bs-id='" . (int)$row['ID'] . "'
+                      data-estado='" . h($estado) . "'
+                      data-bus-nombre='" . h($row['bus_nombre']) . "'
+                      title='Ver comentarios'>
+                  <i class='bi bi-chat-dots-fill'></i>
+              </button>";
 
               echo "<tr class='accent' style='--accent-color: {$accent}'>
                       <td><span class='chip'>".h($cat)."</span></td>
@@ -273,10 +427,9 @@ $estatusClass = function($tx) {
                                 title='Ver comentarios'
                                 data-bs-toggle='modal'
                                 data-bs-target='#modalComentarios'
-                                data-bs-id='". (int)$row['ID'] ."'
-                                data-bus-nombre='" . h($row['bus_nombre']) . "'
+                                data-bs-id='" . (int)$row['ID'] . "'
                                 data-estado='" . h($estado) . "'
-                                data-puede-crear='" . ($puedeCrearComentarios ? '1' : '0') . "'>
+                                data-bus-nombre='" . h($row['bus_nombre']) . "'>
                             <i class='bi bi-chat-dots-fill'></i>
                         </button>
                       </td>
@@ -438,89 +591,37 @@ $estatusClass = function($tx) {
   </div>
 </div>
 
-<!-- Bootstrap Icons -->
+<!-- Estilos y Scripts -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-<!-- Modal de Comentarios -->
 <link rel="stylesheet" href="/final/mapa/public/sections/lineadetiempo/stylelineatiempo.css">
 
-<!-- Modal global, se rellena dinámicamente -->
-<div class="modal fade" id="modalComentarios" tabindex="-1" role="dialog" aria-modal="true">
-  <div class="modal-dialog modal-xl" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Comentarios</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        <div class="text-center">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Cargando...</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Script de comentarios -->
-<script src="/final/mapa/public/sections/lineadetiempo/comentarios_ui.js"></script>
-
 <script>
-(function () {
-  const modalComentarios = document.getElementById('modalComentarios');
+// Script simplificado para delegar al modal global
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('� Detalle.php cargado');
   
-  if (modalComentarios) {
-    modalComentarios.addEventListener('show.bs.modal', async function (event) {
-      const button = event.relatedTarget;
-      const id = button.getAttribute('data-bs-id');
-      const busNombre = button.getAttribute('data-bus-nombre');
-      const estado = button.getAttribute('data-estado');
-      const puedeCrear = button.getAttribute('data-puede-crear');
-      
-      const modalDialog = this.querySelector('.modal-dialog');
-      modalDialog.innerHTML = '<div class="modal-content"><div class="modal-body text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></div></div>';
-      
-      try {
-        const url = '/final/mapa/public/sections/lineadetiempo/comentarios_modal.php';
-        const puedeCrear = button.getAttribute('data-puede-crear') === '1';
-        const params = new URLSearchParams({
-          id: id,
-          estado: estado,
-          nombre: busNombre,
-          puede_crear: puedeCrear ? '1' : '0'
-        });
-        
-        const response = await fetch(`${url}?${params.toString()}`);
-        if (!response.ok) throw new Error('Network response was not ok');
-        
-        const html = await response.text();
-        modalDialog.innerHTML = html;
-        
-        // Inicializar cualquier componente adicional si es necesario
-        if (window.initComentariosModal) {
-          window.initComentariosModal(modalDialog);
-        }
-      } catch (error) {
-        console.error('Error loading modal content:', error);
-        modalDialog.innerHTML = `
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Error</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-danger">
-              Error al cargar los comentarios. Por favor, intente nuevamente.
-            </div>
-          </div>`;
-      }
-    });
-  }
-})();
-    // No necesitamos más código aquí ya que la funcionalidad
-    // está manejada por el event listener de arriba
+  // Los botones modalbitacora ya están manejados por el script global en general.php
+  // No necesitamos duplicar el manejo aquí
+  
+  console.log('✅ Detalle.php inicializado');
 });
 </script>
 
+<!-- Estilos y Scripts -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<link rel="stylesheet" href="/final/mapa/public/sections/lineadetiempo/stylelineatiempo.css">
+
+<script>
+// Script simplificado para delegar al modal global
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🔄 Detalle.php cargado');
+  
+  // Los botones modalbitacora ya están manejados por el script global en general.php
+  // No necesitamos duplicar el manejo aquí
+  
+  console.log('✅ Detalle.php inicializado');
+});
+</script>
 
 </div>
 </body>
