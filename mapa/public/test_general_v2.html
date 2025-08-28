@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test General V2</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { margin: 20px; }
+        .test-controls { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h2>🧪 Test de Carga de Sección General V2</h2>
+        
+        <div class="test-controls">
+            <button id="loadV2" class="btn btn-primary">🚀 Cargar General V2</button>
+            <button id="clearContent" class="btn btn-secondary">🗑️ Limpiar</button>
+            <span id="status" class="ms-3"></span>
+        </div>
+        
+        <!-- Contenedor donde se cargará la sección -->
+        <div id="main-content">
+            <div class="text-muted text-center p-5">
+                Presiona "Cargar General V2" para probar la sección
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts necesarios del sistema -->
+    <script>
+        // Simular las funciones principales del sistema
+        async function cargarSeccion(ruta) {
+            const contenedor = document.getElementById('main-content');
+            const status = document.getElementById('status');
+            
+            status.innerHTML = '⏳ Cargando...';
+            contenedor.innerHTML = '<div class="text-center p-4">Cargando sección...</div>';
+
+            try {
+                const resp = await fetch(ruta);
+                if (!resp.ok) throw new Error(`Error al cargar ${ruta}`);
+                const html = await resp.text();
+
+                // Crear contenedor temporal para procesar scripts
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+
+                // Primero pinta el HTML visible
+                contenedor.innerHTML = temp.innerHTML;
+
+                // Cargar scripts externos
+                const scripts = temp.querySelectorAll('script[src]');
+                for (const script of scripts) {
+                    await loadScript(script.src);
+                }
+
+                // Ejecutar scripts inline
+                const inlineScripts = temp.querySelectorAll('script:not([src])');
+                inlineScripts.forEach(script => {
+                    try {
+                        eval(script.textContent);
+                    } catch (e) {
+                        console.error('Error ejecutando script inline:', e);
+                    }
+                });
+
+                // Intentar llamar init específico
+                setTimeout(() => {
+                    if (typeof window.initMapaGeneralV2 === 'function') {
+                        console.log('🚀 Llamando initMapaGeneralV2...');
+                        window.initMapaGeneralV2();
+                        status.innerHTML = '✅ Sección cargada e inicializada';
+                    } else {
+                        status.innerHTML = '⚠️ Sección cargada pero init no disponible';
+                    }
+                }, 100);
+
+            } catch (error) {
+                contenedor.innerHTML = `<div class="text-danger p-4">❌ Error: ${error.message}</div>`;
+                status.innerHTML = '❌ Error al cargar';
+                console.error(error);
+            }
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // Event listeners
+        document.getElementById('loadV2').onclick = () => {
+            cargarSeccion('sections/mapabus/general_v2.php');
+        };
+
+        document.getElementById('clearContent').onclick = () => {
+            document.getElementById('main-content').innerHTML = '<div class="text-muted text-center p-5">Contenido limpiado</div>';
+            document.getElementById('status').innerHTML = '';
+        };
+    </script>
+</body>
+</html>

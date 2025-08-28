@@ -54,6 +54,7 @@ function detectarInitSegunRuta(ruta) {
   if (ruta.includes('/buses/')) return 'initBuses';
   if (ruta.includes('/usuarios/')) return 'initUsuarios';
   if (ruta.includes('/registros/')) return 'initRegistros';
+  if (ruta.includes('general_v2')) return 'initMapaGeneralV2';
   // por defecto ninguno
   return null;
 }

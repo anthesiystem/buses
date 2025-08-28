@@ -123,7 +123,7 @@ $permisos = [
       display: flex !important;
       flex-direction: row !important;
       width: 100%;
-      height: 75vh;
+      height: 89vh;
       min-height: 450px;
       gap: 15px;
       padding: 15px;
@@ -133,9 +133,9 @@ $permisos = [
     }
     
     #mapa {
-      flex: 0 0 69% !important;
+      flex: 1 0 60% !important;
       width: 70% !important;
-      background: #f8f9fa;
+      background: #e1edf880;
       border-radius: 8px;
       padding: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -154,9 +154,9 @@ $permisos = [
     }
     
     #info {
-      flex: 0 0 30% !important;
+      flex: 0 0 39% !important;
       width: 30% !important;
-      background: white;
+      background: #e1edf880;
       border-radius: 8px;
       padding: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -235,7 +235,7 @@ $permisos = [
     
     /* Borde punteado gris simple para estado seleccionado */
     .estado-seleccionado {
-      stroke: #d2e2ffff !important;
+      stroke: #0b0b0bff !important;
       stroke-width: 1 !important;
       stroke-dasharray: 8,4 !important;
       stroke-dashoffset: 0;
@@ -368,7 +368,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     src="/final/mapa/server/mapag/mapageneral.js?v=2"
     data-color-concluido="#04a404b6"
     data-color-sin-ejecutar="#B0B0B0"
-    data-color-otro="#d7201aad"
+    data-color-otro="#e1d071ff"
     data-url-datos="/final/mapa/server/mapag/generalindex.php"
     data-url-detalle="/final/mapa/server/mapag/detalle.php"
     data-catalogo-buses='<?= json_encode($catalogoBuses, JSON_UNESCAPED_UNICODE) ?>'
@@ -382,7 +382,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const b = document.getElementById("legendPruebas");
     const c = document.getElementById("legendSinEjecutar");
     if (a) a.setAttribute("fill", "#04a404b6");
-    if (b) b.setAttribute("fill", "#d7201aff");
+    if (b) b.setAttribute("fill", "#258d19");
     if (c) c.setAttribute("fill", "#B0B0B0");
     if (a && b && c) clearInterval(iv);
   }, 120);

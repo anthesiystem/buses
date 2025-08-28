@@ -1,0 +1,2370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - Mapa Interactivo SVG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .btn.secondary {
+            background: #6c757d;
+        }
+
+        .btn.secondary:hover {
+            background: #545b62;
+        }
+
+        .btn.success {
+            background: #28a745;
+        }
+
+        .btn.success:hover {
+            background: #1e7e34;
+        }
+
+        input[type="range"] {
+            width: 150px;
+        }
+
+        .map-container {
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            overflow: auto;
+            max-height: 80vh;
+        }
+
+        .map-wrapper {
+            display: inline-block;
+            position: relative;
+            transform-origin: center center;
+            transition: transform 0.3s ease;
+            cursor: grab;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .map-wrapper:active {
+            cursor: grabbing;
+        }
+
+        .map-wrapper svg {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+        }
+
+        .map-wrapper svg path {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .map-wrapper svg path:hover {
+            filter: brightness(1.2);
+            stroke: #007bff;
+            stroke-width: 2px;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            max-width: 300px;
+            backdrop-filter: blur(10px);
+        }
+
+        .info-panel h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .info-panel p {
+            color: #6c757d;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h4 {
+            color: #2c3e50;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .number {
+            color: #007bff;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .control-group {
+                justify-content: space-between;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .info-panel {
+                position: static;
+                margin: 20px auto;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Demo Mapa Interactivo SVG</h1>
+            <p>Visualización interactiva del mapa vectorial con controles avanzados</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="zoom">Zoom:</label>
+                <input type="range" id="zoom" min="0.5" max="3" step="0.1" value="1">
+                <span id="zoomValue">100%</span>
+            </div>
+            
+            <div class="control-group">
+                <button class="btn" onclick="resetView()">🔄 Reiniciar Vista</button>
+                <button class="btn secondary" onclick="toggleInfo()">ℹ️ Información</button>
+                <button class="btn success" onclick="downloadSVG()">💾 Descargar SVG</button>
+                <button class="btn" onclick="showStatesList()" style="background: #28a745;">📋 Lista Estados</button>
+                <button class="btn" onclick="highlightDetectedStates()" style="background: #ffc107; color: #000;">🎯 Resaltar Detectados</button>
+                <button class="btn" onclick="toggleMappingPanel()" style="background: #6f42c1; color: white;">🗂️ Mapeo Manual</button>
+                <button class="btn" onclick="forceRefreshSelectors()" style="background: #17a2b8; color: white;">⚡ Actualizar Selectores</button>
+                <button class="btn" onclick="validateAllStatesAssigned()" style="background: #fd7e14; color: white;">✅ Validar Estados</button>
+                <button class="btn" onclick="enhanceSVGWithStateData()" style="background: #6f42c1; color: white;">🔧 Mejorar SVG</button>
+                <button class="btn" onclick="exportEnhancedSVG()" style="background: #28a745; color: white;">📦 Exportar Mejorado</button>
+            </div>
+
+            <div class="control-group">
+                <label for="colorMode">Modo Color:</label>
+                <select id="colorMode" onchange="changeColorMode()">
+                    <option value="original">Original</option>
+                    <option value="blue">Azul</option>
+                    <option value="green">Verde</option>
+                    <option value="red">Rojo</option>
+                    <option value="gray">Escala de Grises</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div class="map-wrapper" id="mapWrapper">
+                <!-- El SVG se cargará aquí -->
+            </div>
+            
+            <div class="info-panel" id="infoPanel">
+                <h3>📍 Información del Mapa</h3>
+                <p><strong>Formato:</strong> SVG Vectorial</p>
+                <p><strong>Dimensiones:</strong> 1225 × 604.8 px</p>
+                <p><strong>Elementos:</strong> <span id="pathCount">0</span> paths</p>
+                <p><strong>Estados detectados:</strong> <span id="statesDetected">0/32</span></p>
+                <p><strong>Interactividad:</strong> Zoom, hover, click</p>
+                <p><strong>Estado:</strong> <span id="mapStatus">Cargando...</span></p>
+                
+                <!-- Barra de progreso de validación -->
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e9ecef;">
+                    <p><strong>📊 Progreso de Asignación:</strong></p>
+                    <div style="background: #e9ecef; border-radius: 10px; overflow: hidden; margin: 8px 0;">
+                        <div id="progressBar" style="
+                            background: linear-gradient(90deg, #28a745, #20c997);
+                            height: 20px;
+                            width: 0%;
+                            border-radius: 10px;
+                            transition: width 0.5s ease;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-size: 12px;
+                            font-weight: bold;
+                        ">0%</div>
+                    </div>
+                    <p style="font-size: 12px; color: #6c757d;">
+                        <span id="progressText">0/32 estados asignados</span>
+                    </p>
+                </div>
+                
+                <!-- Estado de compatibilidad -->
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e9ecef;">
+                    <p><strong>🔧 Compatibilidad Proyecto:</strong></p>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 12px; color: #6c757d;">Estado:</span>
+                            <span id="compatibilityStatus" style="font-size: 12px; font-weight: bold; color: #dc3545;">
+                                No mejorado
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                            <span style="font-size: 12px; color: #6c757d;">Atributos:</span>
+                            <span id="enhancedCount" style="font-size: 12px; font-weight: bold;">
+                                0 paths mejorados
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario de Mapeo Manual -->
+            <div class="manual-mapping-panel" id="mappingPanel" style="
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: rgba(255, 255, 255, 0.95);
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+                max-width: 350px;
+                backdrop-filter: blur(10px);
+                display: none;
+            ">
+                <h3 style="color: #2c3e50; margin-bottom: 15px;">🗂️ Mapeo Manual de Estados</h3>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Seleccionar Path:</label>
+                    <select id="pathSelector" style="
+                        width: 100%;
+                        padding: 8px;
+                        border: 1px solid #ddd;
+                        border-radius: 5px;
+                        font-size: 14px;
+                    " onchange="selectPath()">
+                        <option value="">-- Selecciona un Path --</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Estado Correspondiente:</label>
+                    <select id="stateSelector" style="
+                        width: 100%;
+                        padding: 8px;
+                        border: 1px solid #ddd;
+                        border-radius: 5px;
+                        font-size: 14px;
+                    ">
+                        <option value="">-- Selecciona un Estado --</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <button onclick="assignState()" style="
+                        width: 100%;
+                        background: #28a745;
+                        color: white;
+                        border: none;
+                        padding: 10px;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        margin-bottom: 10px;
+                    ">
+                        ✅ Asignar Estado
+                    </button>
+                    
+                    <button onclick="removeAssignment()" style="
+                        width: 100%;
+                        background: #dc3545;
+                        color: white;
+                        border: none;
+                        padding: 10px;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        margin-bottom: 10px;
+                    ">
+                        ❌ Quitar Asignación
+                    </button>
+                </div>
+
+                <div style="font-size: 12px; color: #6c757d; border-top: 1px solid #ddd; padding-top: 10px;">
+                    <strong>Instrucciones:</strong><br>
+                    1. Haz clic en un path del mapa para seleccionarlo<br>
+                    2. Elige el estado correspondiente<br>
+                    3. Haz clic en "Asignar Estado"<br>
+                    4. Los mapeos se guardan automáticamente<br><br>
+                    
+                    <button onclick="debugMappingSystem()" style="
+                        background: #6c757d;
+                        color: white;
+                        border: none;
+                        padding: 5px 10px;
+                        border-radius: 3px;
+                        cursor: pointer;
+                        font-size: 11px;
+                        margin-top: 5px;
+                    ">
+                        🐛 Debug Info
+                    </button>
+                </div>
+
+                <div style="text-align: center; margin-top: 15px;">
+                    <button onclick="toggleMappingPanel()" style="
+                        background: #6c757d;
+                        color: white;
+                        border: none;
+                        padding: 8px 16px;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-size: 12px;
+                    ">
+                        Cerrar Panel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h4>🎨 Estilos CSS</h4>
+                <div class="number" id="styleCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h4>�️ Estados Detectados</h4>
+                <div class="number" id="detectedStatesCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h4>📐 Progreso Validación</h4>
+                <div class="number" id="validationProgress">0%</div>
+            </div>
+            <div class="stat-card">
+                <h4>🔍 Zoom Actual</h4>
+                <div class="number" id="currentZoom">100%</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 - Demo Interactivo de Mapa SVG | Desarrollado para visualización y análisis</p>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        let currentZoom = 1;
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+        let translateX = 0;
+        let translateY = 0;
+
+        // Base de datos de estados mexicanos con coordenadas aproximadas
+        const estadosMexico = {
+            'Aguascalientes': { coords: [102.3, 21.9], area: 'pequeña' },
+            'Baja California': { coords: [115.3, 30.5], area: 'grande' },
+            'Baja California Sur': { coords: [112.0, 26.0], area: 'grande' },
+            'Campeche': { coords: [90.5, 19.8], area: 'mediana' },
+            'Chiapas': { coords: [92.6, 16.8], area: 'grande' },
+            'Chihuahua': { coords: [106.0, 28.6], area: 'muy_grande' },
+            'Ciudad de México': { coords: [99.1, 19.4], area: 'muy_pequeña' },
+            'Coahuila': { coords: [101.5, 27.0], area: 'muy_grande' },
+            'Colima': { coords: [103.7, 19.0], area: 'muy_pequeña' },
+            'Durango': { coords: [105.0, 24.8], area: 'grande' },
+            'Guanajuato': { coords: [101.0, 21.0], area: 'mediana' },
+            'Guerrero': { coords: [99.5, 17.5], area: 'grande' },
+            'Hidalgo': { coords: [98.8, 20.4], area: 'pequeña' },
+            'Jalisco': { coords: [103.5, 20.5], area: 'grande' },
+            'Estado de México': { coords: [99.7, 19.3], area: 'mediana' },
+            'Michoacán': { coords: [101.9, 19.4], area: 'grande' },
+            'Morelos': { coords: [99.0, 18.7], area: 'muy_pequeña' },
+            'Nayarit': { coords: [104.8, 21.8], area: 'mediana' },
+            'Nuevo León': { coords: [100.3, 25.5], area: 'grande' },
+            'Oaxaca': { coords: [96.7, 17.0], area: 'muy_grande' },
+            'Puebla': { coords: [98.2, 19.0], area: 'mediana' },
+            'Querétaro': { coords: [100.4, 20.6], area: 'pequeña' },
+            'Quintana Roo': { coords: [87.5, 19.2], area: 'mediana' },
+            'San Luis Potosí': { coords: [100.9, 22.2], area: 'grande' },
+            'Sinaloa': { coords: [107.4, 25.0], area: 'grande' },
+            'Sonora': { coords: [110.9, 29.3], area: 'muy_grande' },
+            'Tabasco': { coords: [92.9, 17.8], area: 'pequeña' },
+            'Tamaulipas': { coords: [99.0, 24.3], area: 'grande' },
+            'Tlaxcala': { coords: [98.2, 19.3], area: 'muy_pequeña' },
+            'Veracruz': { coords: [96.9, 19.2], area: 'muy_grande' },
+            'Yucatán': { coords: [89.0, 20.7], area: 'mediana' },
+            'Zacatecas': { coords: [102.6, 22.8], area: 'grande' }
+        };
+
+        let pathStateMapping = {};
+        let detectedStates = {};
+        let manualMappings = JSON.parse(localStorage.getItem('manualMappings') || '{}');
+        let currentSelectedPath = null;
+        let allPaths = [];
+
+        // Cargar el SVG con múltiples métodos de fallback
+        async function loadSVG() {
+            const mapWrapper = document.getElementById('mapWrapper');
+            
+            // Método 1: Intentar cargar con fetch
+            try {
+                const response = await fetch('img-map.svg');
+                if (response.ok) {
+                    const svgText = await response.text();
+                    mapWrapper.innerHTML = svgText;
+                    
+                    const svg = mapWrapper.querySelector('svg');
+                    if (svg) {
+                        console.log('✅ SVG cargado correctamente con fetch');
+                        await initializeSVG(svg);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.warn('Método fetch falló:', error);
+            }
+            
+            // Método 2: Intentar cargar con XMLHttpRequest
+            try {
+                await loadSVGWithXHR();
+                return;
+            } catch (error) {
+                console.warn('Método XMLHttpRequest falló:', error);
+            }
+            
+            // Método 3: Intentar cargar como imagen embebida
+            try {
+                await loadSVGAsImage();
+                return;
+            } catch (error) {
+                console.warn('Método imagen falló:', error);
+            }
+            
+            // Método 4: Usar SVG embebido como último recurso
+            console.warn('Todos los métodos de carga fallaron, usando SVG demo');
+            loadEmbeddedSVG();
+        }
+        
+        function loadSVGWithXHR() {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', 'img-map.svg', true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            const mapWrapper = document.getElementById('mapWrapper');
+                            mapWrapper.innerHTML = xhr.responseText;
+                            
+                            const svg = mapWrapper.querySelector('svg');
+                            if (svg) {
+                                console.log('✅ SVG cargado correctamente con XMLHttpRequest');
+                                initializeSVG(svg).then(resolve);
+                            } else {
+                                reject(new Error('SVG no válido'));
+                            }
+                        } else {
+                            reject(new Error(`Error HTTP: ${xhr.status}`));
+                        }
+                    }
+                };
+                xhr.send();
+            });
+        }
+        
+        function loadSVGAsImage() {
+            return new Promise((resolve, reject) => {
+                const mapWrapper = document.getElementById('mapWrapper');
+                mapWrapper.innerHTML = `
+                    <object data="img-map.svg" type="image/svg+xml" style="width: 100%; height: auto;">
+                        <embed src="img-map.svg" type="image/svg+xml" style="width: 100%; height: auto;" />
+                    </object>
+                `;
+                
+                const object = mapWrapper.querySelector('object');
+                object.onload = function() {
+                    try {
+                        const svgDoc = object.contentDocument;
+                        const svg = svgDoc.querySelector('svg');
+                        if (svg) {
+                            // Clonar el SVG al DOM principal
+                            const clonedSVG = svg.cloneNode(true);
+                            mapWrapper.innerHTML = '';
+                            mapWrapper.appendChild(clonedSVG);
+                            
+                            console.log('✅ SVG cargado correctamente como object');
+                            initializeSVG(clonedSVG).then(resolve);
+                        } else {
+                            reject(new Error('No se encontró SVG en object'));
+                        }
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                
+                object.onerror = () => reject(new Error('Error cargando object'));
+                
+                // Timeout después de 3 segundos
+                setTimeout(() => reject(new Error('Timeout cargando object')), 3000);
+            });
+        }
+
+        function loadEmbeddedSVG() {
+            // SVG embebido como fallback
+            const mapWrapper = document.getElementById('mapWrapper');
+            mapWrapper.innerHTML = `
+                <div style="padding: 40px; text-align: center; color: #6c757d; border: 2px dashed #dee2e6; border-radius: 10px; background: #f8f9fa;">
+                    <h3 style="color: #dc3545; margin-bottom: 20px;">🚫 Error de Carga del Mapa</h3>
+                    <p style="margin-bottom: 15px;"><strong>No se pudo cargar <code>img-map.svg</code></strong></p>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: left;">
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">🔧 Posibles soluciones:</h4>
+                        <ol style="color: #495057; line-height: 1.6;">
+                            <li><strong>Servidor local:</strong> Abre esta página desde un servidor web (no desde file://)</li>
+                            <li><strong>Verificar archivo:</strong> Asegúrate de que <code>img-map.svg</code> esté en la misma carpeta</li>
+                            <li><strong>Permisos:</strong> Verifica que el archivo tenga permisos de lectura</li>
+                            <li><strong>CORS:</strong> Si usas un servidor, configura los headers CORS correctamente</li>
+                        </ol>
+                    </div>
+                    
+                    <div style="margin: 20px 0;">
+                        <button onclick="loadSVG()" style="
+                            background: #007bff;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            margin-right: 10px;
+                            margin-bottom: 10px;
+                        ">
+                            🔄 Reintentar Carga
+                        </button>
+                        
+                        <button onclick="forceLoadRealSVG()" style="
+                            background: #dc3545;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            margin-right: 10px;
+                            margin-bottom: 10px;
+                        ">
+                            🚀 Forzar Carga Real
+                        </button>
+                        
+                        <button onclick="loadDemoSVG()" style="
+                            background: #28a745;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            margin-bottom: 10px;
+                        ">
+                            📊 Usar Mapa Demo
+                        </button>
+                    </div>
+                    
+                    <div style="font-size: 12px; color: #6c757d; margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                        <strong>Estado actual:</strong> Archivo SVG no accesible<br>
+                        <strong>Última actualización:</strong> ${new Date().toLocaleString()}
+                    </div>
+                </div>
+            `;
+            document.getElementById('mapStatus').textContent = 'Error de carga - SVG no accesible';
+            console.error('❌ No se pudo cargar img-map.svg - usando modo fallback');
+        }
+
+        function loadDemoSVG() {
+            // SVG simplificado para demostración
+            const demoSVG = `
+                <svg viewBox="0 0 800 600" style="border: 1px solid #ccc; background: #f8f9fa;">
+                    <path d="M50,50 L150,50 L150,150 L50,150 Z" class="demo-path" fill="#e3f2fd" stroke="#2196f3"/>
+                    <path d="M200,80 L320,80 L320,200 L200,200 Z" class="demo-path" fill="#f3e5f5" stroke="#9c27b0"/>
+                    <path d="M350,60 L480,60 L480,180 L350,180 Z" class="demo-path" fill="#e8f5e8" stroke="#4caf50"/>
+                    <path d="M100,200 L250,200 L250,300 L100,300 Z" class="demo-path" fill="#fff3e0" stroke="#ff9800"/>
+                    <path d="M300,220 L450,220 L450,320 L300,320 Z" class="demo-path" fill="#ffebee" stroke="#f44336"/>
+                    <path d="M500,150 L650,150 L650,250 L500,250 Z" class="demo-path" fill="#e0f2f1" stroke="#009688"/>
+                    <path d="M120,350 L280,350 L280,450 L120,450 Z" class="demo-path" fill="#fce4ec" stroke="#e91e63"/>
+                    <path d="M320,360 L480,360 L480,460 L320,460 Z" class="demo-path" fill="#f1f8e9" stroke="#8bc34a"/>
+                    <text x="400" y="30" text-anchor="middle" font-family="Arial" font-size="20" fill="#333">
+                        🗺️ Mapa de Demostración - 8 Regiones
+                    </text>
+                </svg>
+            `;
+            
+            document.getElementById('mapWrapper').innerHTML = demoSVG;
+            const svg = document.querySelector('svg');
+            initializeSVG(svg);
+            document.getElementById('mapStatus').textContent = 'Mapa demo cargado - 8 regiones';
+            console.log('✅ SVG demo cargado correctamente');
+        }
+        
+        // Nueva función para forzar la carga del SVG real
+        function forceLoadRealSVG() {
+            // Intentar con una URL absoluta
+            const currentURL = window.location.href;
+            const baseURL = currentURL.substring(0, currentURL.lastIndexOf('/') + 1);
+            const svgURL = baseURL + 'img-map.svg';
+            
+            console.log('🔄 Intentando cargar SVG desde:', svgURL);
+            
+            fetch(svgURL, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'image/svg+xml',
+                },
+                cache: 'no-cache'
+            })
+            .then(response => {
+                console.log('📡 Respuesta del servidor:', response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+                }
+                return response.text();
+            })
+            .then(svgText => {
+                console.log('📄 SVG cargado, tamaño:', svgText.length, 'caracteres');
+                
+                if (svgText.includes('<svg')) {
+                    const mapWrapper = document.getElementById('mapWrapper');
+                    mapWrapper.innerHTML = svgText;
+                    
+                    const svg = mapWrapper.querySelector('svg');
+                    if (svg) {
+                        console.log('✅ SVG real cargado correctamente');
+                        initializeSVG(svg);
+                        document.getElementById('mapStatus').textContent = 'SVG real cargado exitosamente';
+                    } else {
+                        throw new Error('No se encontró elemento SVG en el contenido');
+                    }
+                } else {
+                    throw new Error('El contenido no parece ser un SVG válido');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error cargando SVG real:', error);
+                alert(`Error al cargar el SVG: ${error.message}`);
+            });
+        }
+
+        async function initializeSVG(svg) {
+            allPaths = Array.from(svg.querySelectorAll('path'));
+            console.log(`🔍 Encontrados ${allPaths.length} paths en el SVG`);
+            
+            await analyzeAndMapStates(svg);
+            setupSVGInteractions(svg);
+            updateStats(svg);
+            document.getElementById('mapStatus').textContent = `${allPaths.length} paths cargados`;
+            
+            // Aplicar mapeos manuales guardados
+            applyManualMappings();
+            
+            // Poblar selectores después de cargar el SVG
+            populatePathSelector();
+            populateStateSelector();
+            
+            // Actualizar estado de compatibilidad
+            updateCompatibilityStatus();
+            
+            console.log('✅ SVG inicializado completamente');
+        }
+
+        // Analizar y mapear estados basado en coordenadas y tamaño
+        async function analyzeAndMapStates(svg) {
+            const paths = svg.querySelectorAll('path');
+            const svgRect = svg.getBoundingClientRect();
+            const viewBox = svg.getAttribute('viewBox').split(' ');
+            const svgWidth = parseFloat(viewBox[2]);
+            const svgHeight = parseFloat(viewBox[3]);
+            
+            console.log(`Analizando ${paths.length} paths del SVG...`);
+            
+            // Analizar cada path
+            paths.forEach((path, index) => {
+                try {
+                    const pathData = path.getAttribute('d');
+                    if (!pathData) return;
+                    
+                    // Calcular el bbox del path
+                    const bbox = path.getBBox();
+                    const centerX = bbox.x + bbox.width / 2;
+                    const centerY = bbox.y + bbox.height / 2;
+                    
+                    // Convertir coordenadas SVG a coordenadas geográficas aproximadas
+                    // México aproximadamente: longitud -118 a -86, latitud 14 a 32
+                    const lon = -118 + (centerX / svgWidth) * 32;
+                    const lat = 32 - (centerY / svgHeight) * 18;
+                    
+                    // Clasificar por tamaño
+                    const area = bbox.width * bbox.height;
+                    let sizeCategory;
+                    if (area < 100) sizeCategory = 'muy_pequeña';
+                    else if (area < 500) sizeCategory = 'pequeña';
+                    else if (area < 2000) sizeCategory = 'mediana';
+                    else if (area < 5000) sizeCategory = 'grande';
+                    else sizeCategory = 'muy_grande';
+                    
+                    // Buscar el estado más cercano
+                    let closestState = null;
+                    let minDistance = Infinity;
+                    
+                    Object.entries(estadosMexico).forEach(([stateName, stateData]) => {
+                        const distance = Math.sqrt(
+                            Math.pow(lon - stateData.coords[0], 2) + 
+                            Math.pow(lat - stateData.coords[1], 2)
+                        );
+                        
+                        // Considerar también el tamaño en la decisión
+                        const sizeMatch = stateData.area === sizeCategory ? 0.5 : 0;
+                        const adjustedDistance = distance - sizeMatch;
+                        
+                        if (adjustedDistance < minDistance && !Object.values(pathStateMapping).includes(stateName)) {
+                            minDistance = adjustedDistance;
+                            closestState = stateName;
+                        }
+                    });
+                    
+                    if (closestState && minDistance < 8) { // Umbral de distancia
+                        pathStateMapping[index] = closestState;
+                        detectedStates[closestState] = {
+                            pathIndex: index,
+                            element: path,
+                            coords: [lon, lat],
+                            area: area,
+                            confidence: Math.max(0, 100 - minDistance * 10)
+                        };
+                        
+                        // Añadir atributos al path
+                        path.setAttribute('data-state', closestState);
+                        path.setAttribute('data-confidence', Math.round(detectedStates[closestState].confidence));
+                        path.setAttribute('title', closestState);
+                    }
+                    
+                } catch (error) {
+                    console.warn(`Error analizando path ${index}:`, error);
+                }
+            });
+            
+            console.log('Estados detectados:', Object.keys(detectedStates).length);
+            console.log('Mapeo de paths:', pathStateMapping);
+            
+            // Actualizar el panel de información
+            updateStateDetectionInfo();
+        }
+
+        function updateStateDetectionInfo() {
+            const autoDetected = Object.keys(detectedStates).length;
+            const manualCount = Object.keys(manualMappings).length;
+            const totalMapped = new Set([
+                ...Object.keys(detectedStates),
+                ...Object.values(manualMappings)
+            ]).size;
+            const totalStates = Object.keys(estadosMexico).length;
+            const percentage = ((totalMapped / totalStates) * 100).toFixed(1);
+            
+            // Actualizar texto del estado
+            document.getElementById('mapStatus').textContent = 
+                `${totalMapped}/${totalStates} estados (${autoDetected} auto + ${manualCount} manual)`;
+            
+            // Actualizar contador de estados detectados
+            document.getElementById('statesDetected').textContent = `${totalMapped}/32`;
+            
+            // Actualizar barra de progreso
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            if (progressBar && progressText) {
+                progressBar.style.width = percentage + '%';
+                progressBar.textContent = percentage + '%';
+                progressText.textContent = `${totalMapped}/32 estados asignados`;
+                
+                // Cambiar color según el progreso
+                if (percentage >= 100) {
+                    progressBar.style.background = 'linear-gradient(90deg, #28a745, #20c997)';
+                } else if (percentage >= 80) {
+                    progressBar.style.background = 'linear-gradient(90deg, #ffc107, #fd7e14)';
+                } else if (percentage >= 50) {
+                    progressBar.style.background = 'linear-gradient(90deg, #17a2b8, #007bff)';
+                } else {
+                    progressBar.style.background = 'linear-gradient(90deg, #dc3545, #e83e8c)';
+                }
+                
+                console.log(`📊 Progreso actualizado: ${totalMapped}/${totalStates} (${percentage}%)`);
+                
+                // Celebrar si se completa el 100%
+                if (percentage >= 100 && !window.celebrationShown) {
+                    window.celebrationShown = true;
+                    setTimeout(() => showCompletionCelebration(), 500);
+                }
+            }
+        }
+        
+        function showCompletionCelebration() {
+            // Crear animación de celebración
+            const celebration = document.createElement('div');
+            celebration.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(40, 167, 69, 0.9);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10001;
+                animation: fadeIn 0.5s ease;
+            `;
+            
+            celebration.innerHTML = `
+                <div style="
+                    text-align: center;
+                    color: white;
+                    font-size: 2rem;
+                    animation: bounce 1s infinite;
+                ">
+                    <div style="font-size: 4rem; margin-bottom: 20px;">🎉</div>
+                    <h2>¡FELICITACIONES!</h2>
+                    <p style="font-size: 1.5rem; margin: 20px 0;">
+                        Todos los 32 estados han sido asignados
+                    </p>
+                    <button onclick="this.parentElement.parentElement.remove(); window.celebrationShown = false;" style="
+                        background: white;
+                        color: #28a745;
+                        border: none;
+                        padding: 15px 30px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 18px;
+                        font-weight: bold;
+                        margin-top: 20px;
+                    ">
+                        ¡Genial! 🚀
+                    </button>
+                </div>
+            `;
+            
+            // Añadir estilos de animación
+            if (!document.getElementById('celebrationStyles')) {
+                const style = document.createElement('style');
+                style.id = 'celebrationStyles';
+                style.textContent = `
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+                    @keyframes bounce {
+                        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+                        40% { transform: translateY(-30px); }
+                        60% { transform: translateY(-15px); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(celebration);
+            
+            // Auto-remover después de 5 segundos
+            setTimeout(() => {
+                if (celebration.parentElement) {
+                    celebration.remove();
+                    window.celebrationShown = false;
+                }
+            }, 5000);
+            
+            console.log('🎉 ¡Celebración! Todos los estados han sido asignados');
+        }
+
+        function setupSVGInteractions(svg) {
+            const paths = svg.querySelectorAll('path');
+            const tooltip = document.getElementById('tooltip');
+
+            paths.forEach((path, index) => {
+                // Hover effects
+                path.addEventListener('mouseenter', (e) => {
+                    const rect = e.target.getBoundingClientRect();
+                    const stateName = path.getAttribute('data-state') || manualMappings[index];
+                    const confidence = path.getAttribute('data-confidence');
+                    
+                    tooltip.style.left = rect.left + 'px';
+                    tooltip.style.top = (rect.top - 30) + 'px';
+                    
+                    if (stateName) {
+                        tooltip.innerHTML = `
+                            <strong>${stateName}</strong><br>
+                            <small>${confidence ? `Confianza: ${confidence}%` : 'Mapeo manual'} | Path #${index + 1}</small>
+                        `;
+                    } else {
+                        tooltip.textContent = `Path #${index + 1} (No identificado) - Click para mapear`;
+                    }
+                    
+                    tooltip.style.opacity = '1';
+                    
+                    // Resaltar estado
+                    path.style.stroke = '#007bff';
+                    path.style.strokeWidth = '2px';
+                    path.style.filter = 'brightness(1.3)';
+                });
+
+                path.addEventListener('mouseleave', () => {
+                    tooltip.style.opacity = '0';
+                    if (currentSelectedPath !== index) {
+                        path.style.stroke = '';
+                        path.style.strokeWidth = '';
+                        path.style.filter = '';
+                    }
+                });
+
+                // Click effects - Seleccionar path para mapeo
+                path.addEventListener('click', () => {
+                    selectPathForMapping(index, path);
+                    
+                    const stateName = path.getAttribute('data-state') || manualMappings[index];
+                    if (stateName) {
+                        showStateDetails(stateName, index);
+                    }
+                });
+            });
+
+            // Setup dragging
+            setupDragging(svg);
+        }
+
+        function selectPathForMapping(pathIndex, pathElement) {
+            // Deseleccionar path anterior
+            if (currentSelectedPath !== null && allPaths[currentSelectedPath]) {
+                allPaths[currentSelectedPath].style.stroke = '';
+                allPaths[currentSelectedPath].style.strokeWidth = '';
+                allPaths[currentSelectedPath].style.filter = '';
+            }
+            
+            // Seleccionar nuevo path
+            currentSelectedPath = pathIndex;
+            pathElement.style.stroke = '#ff6b6b';
+            pathElement.style.strokeWidth = '3px';
+            pathElement.style.filter = 'brightness(1.4) saturate(1.5)';
+            
+            // Actualizar selector
+            document.getElementById('pathSelector').value = pathIndex;
+            
+            // Mostrar panel de mapeo si está oculto
+            const panel = document.getElementById('mappingPanel');
+            if (panel.style.display === 'none') {
+                toggleMappingPanel();
+            }
+            
+            console.log(`Path ${pathIndex + 1} seleccionado para mapeo`);
+        }
+
+        function toggleMappingPanel() {
+            const panel = document.getElementById('mappingPanel');
+            if (!panel) {
+                console.error('❌ No se encontró el panel de mapeo');
+                return;
+            }
+            
+            if (panel.style.display === 'none' || !panel.style.display) {
+                panel.style.display = 'block';
+                console.log('📂 Panel de mapeo abierto');
+                
+                // Asegurar que los selectores estén poblados cuando se abre el panel
+                if (allPaths.length > 0) {
+                    populatePathSelector();
+                    populateStateSelector();
+                } else {
+                    console.warn('⚠️ No hay paths cargados aún');
+                }
+            } else {
+                panel.style.display = 'none';
+                console.log('📂 Panel de mapeo cerrado');
+            }
+        }
+
+        function populatePathSelector() {
+            const selector = document.getElementById('pathSelector');
+            if (!selector) {
+                console.error('❌ No se encontró el selector de paths');
+                return;
+            }
+            
+            console.log(`📋 Poblando selector con ${allPaths.length} paths`);
+            selector.innerHTML = '<option value="">-- Selecciona un Path --</option>';
+            
+            allPaths.forEach((path, index) => {
+                const stateName = path.getAttribute('data-state') || manualMappings[index];
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Path #${index + 1}${stateName ? ` (${stateName})` : ' (No asignado)'}`;
+                selector.appendChild(option);
+            });
+            
+            console.log(`✅ Selector de paths poblado con ${selector.options.length - 1} opciones`);
+        }
+        
+        function populateStateSelector() {
+            const stateSelector = document.getElementById('stateSelector');
+            if (!stateSelector) {
+                console.error('❌ No se encontró el selector de estados');
+                return;
+            }
+            
+            console.log('📋 Poblando selector de estados');
+            stateSelector.innerHTML = '<option value="">-- Selecciona un Estado --</option>';
+            
+            const sortedStates = Object.keys(estadosMexico).sort();
+            console.log(`📍 ${sortedStates.length} estados disponibles:`, sortedStates);
+            
+            sortedStates.forEach(state => {
+                const option = document.createElement('option');
+                option.value = state;
+                option.textContent = state;
+                stateSelector.appendChild(option);
+            });
+            
+            console.log(`✅ Selector de estados poblado con ${stateSelector.options.length - 1} opciones`);
+        }
+
+        function selectPath() {
+            const pathIndex = parseInt(document.getElementById('pathSelector').value);
+            console.log(`🎯 Seleccionando path índice: ${pathIndex}`);
+            
+            if (pathIndex >= 0 && allPaths[pathIndex]) {
+                selectPathForMapping(pathIndex, allPaths[pathIndex]);
+                
+                // Pre-seleccionar estado si ya está mapeado
+                const existingState = allPaths[pathIndex].getAttribute('data-state') || manualMappings[pathIndex];
+                if (existingState) {
+                    document.getElementById('stateSelector').value = existingState;
+                    console.log(`🔗 Estado pre-seleccionado: ${existingState}`);
+                }
+            } else {
+                console.warn('⚠️ Índice de path inválido:', pathIndex);
+            }
+        }
+
+        function assignState() {
+            const pathIndex = parseInt(document.getElementById('pathSelector').value);
+            const stateName = document.getElementById('stateSelector').value;
+            
+            console.log(`🔄 Asignando estado: Path ${pathIndex} -> ${stateName}`);
+            
+            if (pathIndex >= 0 && stateName && allPaths[pathIndex]) {
+                // Guardar mapeo manual
+                manualMappings[pathIndex] = stateName;
+                localStorage.setItem('manualMappings', JSON.stringify(manualMappings));
+                
+                // Actualizar atributos del path
+                const path = allPaths[pathIndex];
+                path.setAttribute('data-state', stateName);
+                path.setAttribute('data-manual', 'true');
+                
+                // Actualizar estilos
+                path.style.stroke = '#28a745';
+                path.style.strokeWidth = '2px';
+                path.style.filter = 'brightness(1.2)';
+                
+                // Actualizar selectores
+                populatePathSelector();
+                populateStateSelector();
+                updateStats(document.querySelector('svg'));
+                updateStateDetectionInfo();
+                updateCompatibilityStatus();
+                
+                alert(`✅ Path #${pathIndex + 1} asignado a ${stateName}`);
+                
+                console.log(`✅ Mapeo manual guardado: Path ${pathIndex + 1} -> ${stateName}`);
+                console.log('💾 Mapeos actuales:', manualMappings);
+            } else {
+                const error = `⚠️ Datos inválidos - Path: ${pathIndex}, Estado: "${stateName}", Paths disponibles: ${allPaths.length}`;
+                console.error(error);
+                alert(error);
+            }
+        }
+
+        function removeAssignment() {
+            const pathIndex = parseInt(document.getElementById('pathSelector').value);
+            
+            if (pathIndex >= 0 && allPaths[pathIndex]) {
+                const path = allPaths[pathIndex];
+                const stateName = manualMappings[pathIndex] || path.getAttribute('data-state');
+                
+                // Remover mapeo manual
+                delete manualMappings[pathIndex];
+                localStorage.setItem('manualMappings', JSON.stringify(manualMappings));
+                
+                // Remover atributos
+                path.removeAttribute('data-state');
+                path.removeAttribute('data-manual');
+                
+                // Resetear estilos
+                path.style.stroke = '';
+                path.style.strokeWidth = '';
+                path.style.filter = '';
+                
+                // Actualizar selectores
+                populatePathSelector();
+                document.getElementById('stateSelector').value = '';
+                updateStats(document.querySelector('svg'));
+                
+                alert(`❌ Asignación removida del Path #${pathIndex + 1}${stateName ? ` (${stateName})` : ''}`);
+                
+                console.log(`Mapeo removido: Path ${pathIndex + 1}`);
+            } else {
+                alert('⚠️ Selecciona un path válido');
+            }
+        }
+
+        function applyManualMappings() {
+            Object.entries(manualMappings).forEach(([pathIndex, stateName]) => {
+                const index = parseInt(pathIndex);
+                if (allPaths[index]) {
+                    const path = allPaths[index];
+                    path.setAttribute('data-state', stateName);
+                    path.setAttribute('data-manual', 'true');
+                }
+            });
+        }
+
+        function showStateDetails(stateName, pathIndex) {
+            const stateData = detectedStates[stateName];
+            if (!stateData) return;
+            
+            // Crear modal con información del estado
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    padding: 30px;
+                    border-radius: 15px;
+                    max-width: 500px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+                ">
+                    <h2 style="color: #2c3e50; margin-bottom: 20px;">
+                        🏛️ ${stateName}
+                    </h2>
+                    <div style="text-align: left; margin: 20px 0;">
+                        <p><strong>📍 Coordenadas detectadas:</strong><br>
+                           Latitud: ${stateData.coords[1].toFixed(2)}°<br>
+                           Longitud: ${stateData.coords[0].toFixed(2)}°</p>
+                        <p><strong>📐 Área del path:</strong> ${stateData.area.toFixed(0)} px²</p>
+                        <p><strong>🎯 Confianza de detección:</strong> ${stateData.confidence.toFixed(1)}%</p>
+                        <p><strong>🔢 Índice del path:</strong> #${pathIndex + 1}</p>
+                        <p><strong>🎨 Clase CSS:</strong> ${stateData.element.getAttribute('class') || 'Sin clase'}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            style="
+                                background: #007bff;
+                                color: white;
+                                border: none;
+                                padding: 10px 20px;
+                                border-radius: 5px;
+                                cursor: pointer;
+                                font-size: 16px;
+                            ">
+                        Cerrar
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Cerrar al hacer click fuera del modal
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        function setupDragging(svg) {
+            const mapWrapper = document.getElementById('mapWrapper');
+
+            mapWrapper.addEventListener('mousedown', startDrag);
+            mapWrapper.addEventListener('mousemove', drag);
+            mapWrapper.addEventListener('mouseup', endDrag);
+            mapWrapper.addEventListener('mouseleave', endDrag);
+
+            function startDrag(e) {
+                isDragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                mapWrapper.style.cursor = 'grabbing';
+            }
+
+            function drag(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - lastX;
+                const deltaY = e.clientY - lastY;
+                
+                translateX += deltaX;
+                translateY += deltaY;
+                
+                updateTransform();
+                
+                lastX = e.clientX;
+                lastY = e.clientY;
+            }
+
+            function endDrag() {
+                isDragging = false;
+                mapWrapper.style.cursor = 'grab';
+            }
+        }
+
+        function updateTransform() {
+            const mapWrapper = document.getElementById('mapWrapper');
+            mapWrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+        }
+
+        function updateStats(svg) {
+            const paths = svg.querySelectorAll('path');
+            const styles = svg.querySelectorAll('style');
+            
+            // Contar estados detectados automáticamente y manualmente
+            const autoDetected = Object.keys(detectedStates).length;
+            const manualCount = Object.keys(manualMappings).length;
+            const totalMapped = new Set([
+                ...Object.keys(detectedStates),
+                ...Object.values(manualMappings)
+            ]).size;
+            
+            document.getElementById('pathCount').textContent = paths.length;
+            document.getElementById('pathElements').textContent = paths.length;
+            document.getElementById('styleCount').textContent = styles.length;
+            document.getElementById('detectedStatesCount').textContent = totalMapped;
+            document.getElementById('statesDetected').textContent = `${totalMapped}/32`;
+            
+            // Actualizar progreso de validación
+            const percentage = ((totalMapped / 32) * 100).toFixed(1);
+            const progressElement = document.getElementById('validationProgress');
+            if (progressElement) {
+                progressElement.textContent = percentage + '%';
+            }
+            
+            console.log(`Estadísticas: ${autoDetected} auto, ${manualCount} manual, ${totalMapped} total`);
+            
+            // Verificar si los selectores necesitan actualización
+            const pathSelector = document.getElementById('pathSelector');
+            const stateSelector = document.getElementById('stateSelector');
+            
+            if (pathSelector && pathSelector.options.length <= 1 && allPaths.length > 0) {
+                console.log('🔄 Selectores vacíos detectados, actualizando...');
+                populatePathSelector();
+                populateStateSelector();
+            }
+        }
+
+        function getTouchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function showStatesList() {
+            const detectedList = Object.keys(detectedStates).sort();
+            const notDetected = Object.keys(estadosMexico).filter(state => !detectedStates[state]);
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+                overflow-y: auto;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    padding: 30px;
+                    border-radius: 15px;
+                    max-width: 800px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+                ">
+                    <h2 style="color: #2c3e50; margin-bottom: 20px; text-align: center;">
+                        📋 Estados Mexicanos - Detección Automática
+                    </h2>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div>
+                            <h3 style="color: #28a745; margin-bottom: 15px;">
+                                ✅ Detectados (${detectedList.length})
+                            </h3>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                ${detectedList.map(state => {
+                                    const confidence = detectedStates[state].confidence;
+                                    const confidenceColor = confidence > 80 ? '#28a745' : confidence > 60 ? '#ffc107' : '#dc3545';
+                                    return `
+                                        <div style="
+                                            padding: 8px;
+                                            margin: 5px 0;
+                                            background: #f8f9fa;
+                                            border-radius: 5px;
+                                            border-left: 4px solid ${confidenceColor};
+                                            cursor: pointer;
+                                        " onclick="highlightState('${state}')">
+                                            <strong>${state}</strong><br>
+                                            <small>Confianza: ${confidence.toFixed(1)}%</small>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 style="color: #dc3545; margin-bottom: 15px;">
+                                ❌ No Detectados (${notDetected.length})
+                            </h3>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                ${notDetected.map(state => `
+                                    <div style="
+                                        padding: 8px;
+                                        margin: 5px 0;
+                                        background: #fff5f5;
+                                        border-radius: 5px;
+                                        border-left: 4px solid #dc3545;
+                                    ">
+                                        ${state}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                                style="
+                                    background: #007bff;
+                                    color: white;
+                                    border: none;
+                                    padding: 10px 20px;
+                                    border-radius: 5px;
+                                    cursor: pointer;
+                                    font-size: 16px;
+                                ">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        function highlightState(stateName) {
+            if (!detectedStates[stateName]) return;
+            
+            const element = detectedStates[stateName].element;
+            
+            // Resetear todos los estilos
+            document.querySelectorAll('path').forEach(path => {
+                path.style.stroke = '';
+                path.style.strokeWidth = '';
+                path.style.filter = '';
+            });
+            
+            // Resaltar el estado seleccionado
+            element.style.stroke = '#ff6b6b';
+            element.style.strokeWidth = '4px';
+            element.style.filter = 'brightness(1.5) saturate(2)';
+            
+            // Hacer zoom al estado
+            const bbox = element.getBBox();
+            const centerX = bbox.x + bbox.width / 2;
+            const centerY = bbox.y + bbox.height / 2;
+            
+            // Calcular zoom y posición
+            currentZoom = 2;
+            translateX = -centerX * currentZoom + window.innerWidth / 2;
+            translateY = -centerY * currentZoom + window.innerHeight / 2;
+            
+            document.getElementById('zoom').value = currentZoom;
+            updateZoomDisplay();
+            updateTransform();
+            
+            // Cerrar modal
+            const modal = document.querySelector('div[style*="position: fixed"]');
+            if (modal) modal.remove();
+        }
+
+        function highlightDetectedStates() {
+            const svg = document.querySelector('svg');
+            if (!svg) return;
+            
+            const paths = svg.querySelectorAll('path');
+            
+            // Resetear estilos
+            paths.forEach(path => {
+                path.style.stroke = '';
+                path.style.strokeWidth = '';
+                path.style.filter = '';
+                path.style.opacity = '';
+            });
+            
+            // Resaltar solo los detectados
+            Object.values(detectedStates).forEach(stateData => {
+                const element = stateData.element;
+                const confidence = stateData.confidence;
+                
+                if (confidence > 80) {
+                    element.style.stroke = '#28a745';
+                    element.style.strokeWidth = '3px';
+                    element.style.filter = 'brightness(1.3)';
+                } else if (confidence > 60) {
+                    element.style.stroke = '#ffc107';
+                    element.style.strokeWidth = '2px';
+                    element.style.filter = 'brightness(1.2)';
+                } else {
+                    element.style.stroke = '#dc3545';
+                    element.style.strokeWidth = '2px';
+                    element.style.filter = 'brightness(1.1)';
+                }
+            });
+            
+            // Atenuar los no detectados
+            paths.forEach(path => {
+                if (!path.getAttribute('data-state')) {
+                    path.style.opacity = '0.3';
+                }
+            });
+        }
+
+        // Control functions
+        document.getElementById('zoom').addEventListener('input', function() {
+            currentZoom = parseFloat(this.value);
+            document.getElementById('zoomValue').textContent = Math.round(currentZoom * 100) + '%';
+            document.getElementById('currentZoom').textContent = Math.round(currentZoom * 100) + '%';
+            updateTransform();
+        });
+
+        function resetView() {
+            currentZoom = 1;
+            translateX = 0;
+            translateY = 0;
+            document.getElementById('zoom').value = 1;
+            document.getElementById('zoomValue').textContent = '100%';
+            document.getElementById('currentZoom').textContent = '100%';
+            updateTransform();
+        }
+
+        function toggleInfo() {
+            const infoPanel = document.getElementById('infoPanel');
+            infoPanel.style.display = infoPanel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function downloadSVG() {
+            const link = document.createElement('a');
+            link.href = 'img-map.svg';
+            link.download = 'mapa-descargado.svg';
+            link.click();
+        }
+
+        function changeColorMode() {
+            const mode = document.getElementById('colorMode').value;
+            const svg = document.querySelector('svg');
+            
+            if (!svg) return;
+
+            const paths = svg.querySelectorAll('path');
+            
+            switch(mode) {
+                case 'blue':
+                    paths.forEach(path => {
+                        path.style.filter = 'hue-rotate(200deg)';
+                    });
+                    break;
+                case 'green':
+                    paths.forEach(path => {
+                        path.style.filter = 'hue-rotate(90deg)';
+                    });
+                    break;
+                case 'red':
+                    paths.forEach(path => {
+                        path.style.filter = 'hue-rotate(300deg)';
+                    });
+                    break;
+                case 'gray':
+                    paths.forEach(path => {
+                        path.style.filter = 'grayscale(100%)';
+                    });
+                    break;
+                default:
+                    paths.forEach(path => {
+                        path.style.filter = '';
+                    });
+            }
+        }
+
+        // Inicializar cuando la página carga
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mostrar información del entorno
+            console.log('🌐 Información del entorno:');
+            console.log('- Protocolo:', window.location.protocol);
+            console.log('- Host:', window.location.host);
+            console.log('- Pathname:', window.location.pathname);
+            console.log('- URL completa:', window.location.href);
+            
+            // Verificar si estamos en file:// y mostrar advertencia
+            if (window.location.protocol === 'file:') {
+                console.warn('⚠️ Ejecutándose desde file:// - pueden haber problemas de CORS');
+                showProtocolWarning();
+            }
+            
+            // Cargar SVG
+            loadSVG();
+        });
+        
+        function showProtocolWarning() {
+            const warningDiv = document.createElement('div');
+            warningDiv.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background: #fff3cd;
+                border: 1px solid #ffeaa7;
+                color: #856404;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                max-width: 350px;
+                font-size: 14px;
+            `;
+            
+            warningDiv.innerHTML = `
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 20px; margin-right: 10px;">⚠️</span>
+                    <strong>Modo File://</strong>
+                </div>
+                <p style="margin: 0 0 10px 0; line-height: 1.4;">
+                    Para una mejor experiencia, ejecuta desde un servidor local:
+                </p>
+                <code style="background: #f8f9fa; padding: 8px; border-radius: 4px; display: block; font-size: 12px;">
+                    # Python<br>
+                    python -m http.server 8000<br><br>
+                    # Node.js<br>
+                    npx serve .
+                </code>
+                <button onclick="this.parentElement.remove()" style="
+                    margin-top: 10px;
+                    background: #ffc107;
+                    border: none;
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 12px;
+                ">
+                    Entendido
+                </button>
+            `;
+            
+            document.body.appendChild(warningDiv);
+            
+            // Auto-remover después de 10 segundos
+            setTimeout(() => {
+                if (warningDiv.parentElement) {
+                    warningDiv.remove();
+                }
+            }, 10000);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            switch(e.key) {
+                case '+':
+                case '=':
+                    if (currentZoom < 3) {
+                        currentZoom += 0.1;
+                        document.getElementById('zoom').value = currentZoom;
+                        updateZoomDisplay();
+                        updateTransform();
+                    }
+                    break;
+                case '-':
+                    if (currentZoom > 0.5) {
+                        currentZoom -= 0.1;
+                        document.getElementById('zoom').value = currentZoom;
+                        updateZoomDisplay();
+                        updateTransform();
+                    }
+                    break;
+                case 'r':
+                    resetView();
+                    break;
+            }
+        });
+
+        function updateZoomDisplay() {
+            document.getElementById('zoomValue').textContent = Math.round(currentZoom * 100) + '%';
+            document.getElementById('currentZoom').textContent = Math.round(currentZoom * 100) + '%';
+        }
+
+        // Touch support for mobile
+        let lastTouchDistance = 0;
+
+        document.getElementById('mapWrapper').addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+                lastTouchDistance = getTouchDistance(e.touches);
+            }
+        });
+
+        document.getElementById('mapWrapper').addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const currentDistance = getTouchDistance(e.touches);
+                const scale = currentDistance / lastTouchDistance;
+                
+                currentZoom *= scale;
+                currentZoom = Math.max(0.5, Math.min(3, currentZoom));
+                
+                document.getElementById('zoom').value = currentZoom;
+                updateZoomDisplay();
+                updateTransform();
+                
+                lastTouchDistance = currentDistance;
+            }
+        });
+
+        function debugMappingSystem() {
+            console.log('🐛 === DEBUG INFO - SISTEMA DE MAPEO ===');
+            console.log('📊 Total de paths:', allPaths.length);
+            console.log('🗺️ Estados en base de datos:', Object.keys(estadosMexico).length);
+            console.log('🔗 Mapeos manuales:', Object.keys(manualMappings).length);
+            console.log('🎯 Estados detectados automáticamente:', Object.keys(detectedStates).length);
+            
+            // Verificar selectores
+            const pathSelector = document.getElementById('pathSelector');
+            const stateSelector = document.getElementById('stateSelector');
+            
+            console.log('📋 Path selector encontrado:', !!pathSelector);
+            console.log('📋 Path selector opciones:', pathSelector ? pathSelector.options.length : 'N/A');
+            console.log('📍 State selector encontrado:', !!stateSelector);
+            console.log('📍 State selector opciones:', stateSelector ? stateSelector.options.length : 'N/A');
+            
+            // Verificar SVG
+            const svg = document.querySelector('svg');
+            console.log('🖼️ SVG encontrado:', !!svg);
+            if (svg) {
+                const paths = svg.querySelectorAll('path');
+                console.log('🛤️ Paths en DOM:', paths.length);
+            }
+            
+            // Mostrar mapeos actuales
+            console.log('💾 Mapeos manuales guardados:', manualMappings);
+            console.log('🤖 Estados detectados:', Object.keys(detectedStates));
+            
+            // Crear alerta con la información
+            const debugInfo = `
+🐛 DEBUG INFO:
+- Total paths: ${allPaths.length}
+- Path selector opciones: ${pathSelector ? pathSelector.options.length : 'N/A'}
+- State selector opciones: ${stateSelector ? stateSelector.options.length : 'N/A'}
+- Mapeos manuales: ${Object.keys(manualMappings).length}
+- Estados detectados: ${Object.keys(detectedStates).length}
+- SVG cargado: ${!!svg}
+
+Ver consola (F12) para detalles completos.
+            `;
+            
+            alert(debugInfo);
+        }
+        
+        // Función para forzar re-población de selectores
+        function forceRefreshSelectors() {
+            console.log('🔄 Forzando actualización de selectores...');
+            
+            if (allPaths.length === 0) {
+                console.warn('⚠️ No hay paths cargados, intentando recargar SVG...');
+                const svg = document.querySelector('svg');
+                if (svg) {
+                    allPaths = Array.from(svg.querySelectorAll('path'));
+                    console.log(`🔍 Re-encontrados ${allPaths.length} paths`);
+                }
+            }
+            
+            populatePathSelector();
+            populateStateSelector();
+            
+            console.log('✅ Selectores actualizados');
+        }
+        
+        // Datos de estados mexicanos para compatibilidad con el proyecto
+        const estadosMexicanosDatos = {
+            'Aguascalientes': { codigo: 'MX-AGU', id: 1, clase: 'mx-state is-blocked' },
+            'Baja California': { codigo: 'MX-BCN', id: 2, clase: 'mx-state-disabled' },
+            'Baja California Sur': { codigo: 'MX-BCS', id: 3, clase: 'mx-state-disabled' },
+            'Campeche': { codigo: 'MX-CAM', id: 4, clase: 'mx-state-disabled' },
+            'Chiapas': { codigo: 'MX-CHP', id: 5, clase: 'mx-state-disabled' },
+            'Chihuahua': { codigo: 'MX-CHH', id: 6, clase: 'mx-state-disabled' },
+            'Ciudad de México': { codigo: 'MX-CMX', id: 7, clase: 'mx-state-disabled' },
+            'Coahuila': { codigo: 'MX-COA', id: 8, clase: 'mx-state-disabled' },
+            'Colima': { codigo: 'MX-COL', id: 9, clase: 'mx-state-disabled' },
+            'Durango': { codigo: 'MX-DUR', id: 10, clase: 'mx-state-disabled' },
+            'Guanajuato': { codigo: 'MX-GUA', id: 11, clase: 'mx-state-disabled' },
+            'Guerrero': { codigo: 'MX-GRO', id: 12, clase: 'mx-state-disabled' },
+            'Hidalgo': { codigo: 'MX-HID', id: 13, clase: 'mx-state-disabled' },
+            'Jalisco': { codigo: 'MX-JAL', id: 14, clase: 'mx-state-disabled' },
+            'Estado de México': { codigo: 'MX-MEX', id: 15, clase: 'mx-state-disabled' },
+            'Michoacán': { codigo: 'MX-MIC', id: 16, clase: 'mx-state-disabled' },
+            'Morelos': { codigo: 'MX-MOR', id: 17, clase: 'mx-state-disabled' },
+            'Nayarit': { codigo: 'MX-NAY', id: 18, clase: 'mx-state-disabled' },
+            'Nuevo León': { codigo: 'MX-NLE', id: 19, clase: 'mx-state-disabled' },
+            'Oaxaca': { codigo: 'MX-OAX', id: 20, clase: 'mx-state-disabled' },
+            'Puebla': { codigo: 'MX-PUE', id: 21, clase: 'mx-state-disabled' },
+            'Querétaro': { codigo: 'MX-QUE', id: 22, clase: 'mx-state-disabled' },
+            'Quintana Roo': { codigo: 'MX-ROO', id: 23, clase: 'mx-state-disabled' },
+            'San Luis Potosí': { codigo: 'MX-SLP', id: 24, clase: 'mx-state-disabled' },
+            'Sinaloa': { codigo: 'MX-SIN', id: 25, clase: 'mx-state-disabled' },
+            'Sonora': { codigo: 'MX-SON', id: 26, clase: 'mx-state-disabled' },
+            'Tabasco': { codigo: 'MX-TAB', id: 27, clase: 'mx-state-disabled' },
+            'Tamaulipas': { codigo: 'MX-TAM', id: 28, clase: 'mx-state-disabled' },
+            'Tlaxcala': { codigo: 'MX-TLA', id: 29, clase: 'mx-state-disabled' },
+            'Veracruz': { codigo: 'MX-VER', id: 30, clase: 'mx-state-disabled' },
+            'Yucatán': { codigo: 'MX-YUC', id: 31, clase: 'mx-state-disabled' },
+            'Zacatecas': { codigo: 'MX-ZAC', id: 32, clase: 'mx-state-disabled' }
+        };
+        
+        // Función para aplicar los datos a los paths del SVG
+        function enhanceSVGWithStateData() {
+            console.log('🔧 Mejorando SVG con datos de estados...');
+            
+            const svg = document.querySelector('svg');
+            if (!svg) {
+                console.error('❌ No se encontró SVG');
+                alert('❌ Error: No hay SVG cargado para mejorar');
+                return;
+            }
+            
+            const paths = svg.querySelectorAll('path');
+            console.log(`📄 Procesando ${paths.length} paths...`);
+            
+            let enhancedCount = 0;
+            const improvements = [];
+            
+            paths.forEach((path, index) => {
+                // Verificar si ya tiene estado asignado (automático o manual)
+                const existingState = path.getAttribute('data-state') || 
+                                      manualMappings[index] || 
+                                      (detectedStates && Object.entries(detectedStates).find(([name, data]) => data.pathIndex === index)?.[0]);
+                
+                if (existingState && estadosMexicanosDatos[existingState]) {
+                    const datos = estadosMexicanosDatos[existingState];
+                    
+                    // Añadir atributos del proyecto
+                    path.setAttribute('class', datos.clase);
+                    path.setAttribute('id', datos.codigo);
+                    path.setAttribute('data-entidad-id', datos.id);
+                    path.setAttribute('data-entidad-nombre', existingState.toUpperCase());
+                    
+                    // Conservar atributos existentes
+                    if (!path.getAttribute('data-state')) {
+                        path.setAttribute('data-state', existingState);
+                    }
+                    
+                    // Añadir estilos compatibles con el proyecto
+                    if (!path.getAttribute('fill')) {
+                        path.setAttribute('fill', '#CCCCCC');
+                    }
+                    if (!path.getAttribute('stroke')) {
+                        path.setAttribute('stroke', '#262A27');
+                    }
+                    if (!path.getAttribute('stroke-width')) {
+                        path.setAttribute('stroke-width', '0.5');
+                    }
+                    
+                    enhancedCount++;
+                    improvements.push(`${existingState} → ${datos.codigo}`);
+                    console.log(`✅ Mejorado path ${index + 1}: ${existingState} (${datos.codigo})`);
+                }
+            });
+            
+            console.log(`🎯 Resultado: ${enhancedCount} paths mejorados de ${paths.length} totales`);
+            
+            // Actualizar panel de compatibilidad
+            updateCompatibilityStatus(enhancedCount);
+            
+            // Mostrar resultado al usuario
+            if (enhancedCount > 0) {
+                alert(`✅ SVG Mejorado Exitosamente\\n\\n` +
+                      `📊 Estadísticas:\\n` +
+                      `- Paths procesados: ${paths.length}\\n` +
+                      `- Paths mejorados: ${enhancedCount}\\n` +
+                      `- Compatibilidad: ${((enhancedCount/32)*100).toFixed(1)}%\\n\\n` +
+                      `🔧 Mejoras aplicadas:\\n${improvements.slice(0, 5).join('\\n')}` +
+                      (improvements.length > 5 ? `\\n... y ${improvements.length - 5} más` : ''));
+            } else {
+                alert('⚠️ No se encontraron estados asignados para mejorar.\\n\\nPrimero asigna estados usando el mapeo automático o manual.');
+            }
+            
+            return enhancedCount;
+        }
+        
+        // Función para actualizar el estado de compatibilidad en el panel
+        function updateCompatibilityStatus(enhancedCount = null) {
+            const svg = document.querySelector('svg');
+            const statusElement = document.getElementById('compatibilityStatus');
+            const countElement = document.getElementById('enhancedCount');
+            
+            if (!svg || !statusElement || !countElement) return;
+            
+            // Contar paths mejorados si no se proporciona
+            if (enhancedCount === null) {
+                enhancedCount = svg.querySelectorAll('path[data-entidad-id]').length;
+            }
+            
+            const percentage = ((enhancedCount / 32) * 100).toFixed(1);
+            
+            // Actualizar texto y color del estado
+            if (enhancedCount === 0) {
+                statusElement.textContent = 'No mejorado';
+                statusElement.style.color = '#dc3545';
+            } else if (percentage >= 100) {
+                statusElement.textContent = '✅ Completamente compatible';
+                statusElement.style.color = '#28a745';
+            } else if (percentage >= 80) {
+                statusElement.textContent = '🟡 Mayormente compatible';
+                statusElement.style.color = '#ffc107';
+            } else if (percentage >= 50) {
+                statusElement.textContent = '🔶 Parcialmente compatible';
+                statusElement.style.color = '#fd7e14';
+            } else {
+                statusElement.textContent = '🔴 Baja compatibilidad';
+                statusElement.style.color = '#dc3545';
+            }
+            
+            // Actualizar contador
+            countElement.textContent = `${enhancedCount} paths mejorados (${percentage}%)`;
+            
+            console.log(`📊 Compatibilidad actualizada: ${enhancedCount}/32 (${percentage}%)`);
+        }
+        
+        // Función para exportar el SVG mejorado
+        function exportEnhancedSVG() {
+            const svg = document.querySelector('svg');
+            if (!svg) {
+                alert('❌ Error: No hay SVG cargado para exportar');
+                return;
+            }
+            
+            // Verificar si hay estados asignados
+            const assignedStates = svg.querySelectorAll('path[data-state]').length;
+            if (assignedStates === 0) {
+                alert('⚠️ Advertencia: El SVG no tiene estados asignados.\\n\\nUsa "🔧 Mejorar SVG" primero para añadir los datos del proyecto.');
+                return;
+            }
+            
+            // Clonar el SVG para no modificar el original
+            const clonedSVG = svg.cloneNode(true);
+            
+            // Añadir estilos CSS del proyecto original
+            const style = document.createElement('style');
+            style.textContent = `
+                .mx-state {
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+                .mx-state:hover {
+                    fill: #999999 !important;
+                    stroke: #000000 !important;
+                    stroke-width: 1 !important;
+                }
+                .mx-state.is-blocked {
+                    fill: #ff6b6b !important;
+                }
+                .mx-state-disabled {
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+                .mx-state-disabled:hover {
+                    fill: #999999 !important;
+                    stroke: #000000 !important;
+                    stroke-width: 1 !important;
+                }
+            `;
+            
+            // Insertar estilos al principio del SVG
+            const firstChild = clonedSVG.firstElementChild;
+            clonedSVG.insertBefore(style, firstChild);
+            
+            // Crear el contenido del archivo
+            const svgContent = new XMLSerializer().serializeToString(clonedSVG);
+            const formattedContent = '<?xml version="1.0" encoding="utf-8"?>\\n' + svgContent;
+            
+            // Descargar el archivo
+            const blob = new Blob([formattedContent], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'img-map-enhanced.svg';
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            console.log('💾 SVG mejorado exportado como img-map-enhanced.svg');
+            alert(`📦 SVG Exportado Exitosamente\\n\\n` +
+                  `📁 Archivo: img-map-enhanced.svg\\n` +
+                  `📊 Estados incluidos: ${assignedStates}\\n` +
+                  `🎯 Compatible con el proyecto principal\\n\\n` +
+                  `✅ ¡Listo para usar en producción!`);
+        }
+        
+        // Función para validar si todos los estados están asignados
+        function validateAllStatesAssigned() {
+            console.log('🔍 === VALIDACIÓN DE ESTADOS ASIGNADOS ===');
+            
+            // Obtener todos los estados asignados (automático + manual)
+            const allAssignedStates = new Set();
+            const stateAssignments = {};
+            
+            // Estados detectados automáticamente
+            Object.entries(detectedStates).forEach(([stateName, stateData]) => {
+                allAssignedStates.add(stateName);
+                stateAssignments[stateName] = {
+                    type: 'automático',
+                    pathIndex: stateData.pathIndex,
+                    confidence: stateData.confidence.toFixed(1)
+                };
+            });
+            
+            // Estados asignados manualmente
+            Object.entries(manualMappings).forEach(([pathIndex, stateName]) => {
+                allAssignedStates.add(stateName);
+                if (stateAssignments[stateName]) {
+                    // Si ya existe, actualizar como manual (prioridad)
+                    stateAssignments[stateName].type = 'manual (sobrescribe automático)';
+                } else {
+                    stateAssignments[stateName] = {
+                        type: 'manual',
+                        pathIndex: parseInt(pathIndex),
+                        confidence: 'N/A'
+                    };
+                }
+            });
+            
+            // Verificar estados no asignados
+            const allStates = Object.keys(estadosMexico);
+            const unassignedStates = allStates.filter(state => !allAssignedStates.has(state));
+            const assignedStates = Array.from(allAssignedStates).sort();
+            
+            // Estadísticas
+            const totalStates = allStates.length;
+            const assignedCount = assignedStates.length;
+            const unassignedCount = unassignedStates.length;
+            const percentage = ((assignedCount / totalStates) * 100).toFixed(1);
+            
+            console.log('📊 ESTADÍSTICAS:');
+            console.log(`- Total de estados en México: ${totalStates}`);
+            console.log(`- Estados asignados: ${assignedCount} (${percentage}%)`);
+            console.log(`- Estados sin asignar: ${unassignedCount}`);
+            console.log(`- Paths disponibles: ${allPaths.length}`);
+            
+            console.log('✅ ESTADOS ASIGNADOS:', assignedStates);
+            console.log('❌ ESTADOS SIN ASIGNAR:', unassignedStates);
+            console.log('🔗 DETALLES DE ASIGNACIONES:', stateAssignments);
+            
+            // Crear modal con el reporte completo
+            showValidationReport(assignedStates, unassignedStates, stateAssignments, percentage);
+            
+            return {
+                totalStates,
+                assignedCount,
+                unassignedCount,
+                percentage,
+                assignedStates,
+                unassignedStates,
+                stateAssignments
+            };
+        }
+        
+        function showValidationReport(assignedStates, unassignedStates, stateAssignments, percentage) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+                overflow-y: auto;
+            `;
+            
+            const completionColor = percentage >= 100 ? '#28a745' : percentage >= 80 ? '#ffc107' : '#dc3545';
+            const statusIcon = percentage >= 100 ? '🎉' : percentage >= 80 ? '⚠️' : '❌';
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    padding: 30px;
+                    border-radius: 15px;
+                    max-width: 900px;
+                    width: 95%;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+                ">
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <h2 style="color: #2c3e50; margin-bottom: 10px;">
+                            ${statusIcon} Reporte de Validación de Estados
+                        </h2>
+                        <div style="
+                            background: ${completionColor};
+                            color: white;
+                            padding: 15px;
+                            border-radius: 10px;
+                            font-size: 18px;
+                            font-weight: bold;
+                        ">
+                            ${assignedStates.length}/32 Estados Asignados (${percentage}%)
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px;">
+                        <div>
+                            <h3 style="color: #28a745; margin-bottom: 15px; display: flex; align-items: center;">
+                                <span style="margin-right: 10px;">✅</span>
+                                Estados Asignados (${assignedStates.length})
+                            </h3>
+                            <div style="max-height: 350px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px;">
+                                ${assignedStates.map(state => {
+                                    const assignment = stateAssignments[state];
+                                    const typeColor = assignment.type.includes('automático') ? '#007bff' : '#28a745';
+                                    const typeIcon = assignment.type.includes('automático') ? '🤖' : '✋';
+                                    
+                                    return `
+                                        <div style="
+                                            padding: 10px;
+                                            margin: 8px 0;
+                                            background: #f8f9fa;
+                                            border-radius: 6px;
+                                            border-left: 4px solid ${typeColor};
+                                        ">
+                                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                <strong>${state}</strong>
+                                                <span style="font-size: 12px; color: ${typeColor};">
+                                                    ${typeIcon} ${assignment.type}
+                                                </span>
+                                            </div>
+                                            <div style="font-size: 12px; color: #6c757d; margin-top: 5px;">
+                                                Path #${assignment.pathIndex + 1} 
+                                                ${assignment.confidence !== 'N/A' ? `| Confianza: ${assignment.confidence}%` : ''}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 style="color: #dc3545; margin-bottom: 15px; display: flex; align-items: center;">
+                                <span style="margin-right: 10px;">❌</span>
+                                Estados Sin Asignar (${unassignedStates.length})
+                            </h3>
+                            <div style="max-height: 350px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px;">
+                                ${unassignedStates.length === 0 ? 
+                                    '<div style="text-align: center; color: #28a745; padding: 20px;"><strong>🎉 ¡Todos los estados están asignados!</strong></div>' :
+                                    unassignedStates.map(state => `
+                                        <div style="
+                                            padding: 10px;
+                                            margin: 8px 0;
+                                            background: #fff5f5;
+                                            border-radius: 6px;
+                                            border-left: 4px solid #dc3545;
+                                        ">
+                                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                <strong>${state}</strong>
+                                                <button onclick="highlightUnassignedState('${state}')" style="
+                                                    background: #dc3545;
+                                                    color: white;
+                                                    border: none;
+                                                    padding: 4px 8px;
+                                                    border-radius: 4px;
+                                                    cursor: pointer;
+                                                    font-size: 11px;
+                                                ">
+                                                    Buscar Path
+                                                </button>
+                                            </div>
+                                            <div style="font-size: 12px; color: #6c757d; margin-top: 5px;">
+                                                Coordenadas aprox: ${estadosMexico[state].coords.join(', ')}
+                                            </div>
+                                        </div>
+                                    `).join('')
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${unassignedStates.length > 0 ? `
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                            <h4 style="color: #856404; margin-bottom: 10px;">💡 Sugerencias para completar:</h4>
+                            <ul style="color: #856404; margin-left: 20px; line-height: 1.6;">
+                                <li>Usa el <strong>Mapeo Manual</strong> para asignar los estados faltantes</li>
+                                <li>Haz clic en "Buscar Path" para identificar posibles coincidencias</li>
+                                <li>Verifica si hay paths no asignados que correspondan a estos estados</li>
+                                <li>Algunos estados muy pequeños pueden necesitar asignación manual</li>
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="text-align: center;">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="
+                            background: #007bff;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 16px;
+                            margin-right: 10px;
+                        ">
+                            Cerrar
+                        </button>
+                        
+                        <button onclick="exportValidationReport()" style="
+                            background: #28a745;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 16px;
+                        ">
+                            📊 Exportar Reporte
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+        
+        function highlightUnassignedState(stateName) {
+            console.log(`🔍 Buscando path para estado no asignado: ${stateName}`);
+            
+            // Buscar paths no asignados
+            const unassignedPaths = [];
+            allPaths.forEach((path, index) => {
+                const hasState = path.getAttribute('data-state') || manualMappings[index];
+                if (!hasState) {
+                    unassignedPaths.push({ path, index });
+                }
+            });
+            
+            if (unassignedPaths.length === 0) {
+                alert('❌ No hay paths sin asignar disponibles');
+                return;
+            }
+            
+            // Resaltar todos los paths no asignados
+            allPaths.forEach(path => {
+                path.style.stroke = '';
+                path.style.strokeWidth = '';
+                path.style.filter = '';
+                path.style.opacity = '0.3';
+            });
+            
+            unassignedPaths.forEach(({ path, index }) => {
+                path.style.stroke = '#ff6b6b';
+                path.style.strokeWidth = '3px';
+                path.style.filter = 'brightness(1.5) saturate(2)';
+                path.style.opacity = '1';
+            });
+            
+            alert(`🔍 Se resaltaron ${unassignedPaths.length} paths sin asignar. Haz clic en uno para asignarlo a ${stateName}.`);
+        }
+        
+        function exportValidationReport() {
+            const validation = validateAllStatesAssigned();
+            
+            const reportData = {
+                fecha: new Date().toLocaleString(),
+                resumen: {
+                    totalEstados: validation.totalStates,
+                    estadosAsignados: validation.assignedCount,
+                    estadosSinAsignar: validation.unassignedCount,
+                    porcentajeCompletado: validation.percentage + '%'
+                },
+                estadosAsignados: validation.assignedStates,
+                estadosSinAsignar: validation.unassignedStates,
+                detallesAsignaciones: validation.stateAssignments
+            };
+            
+            const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `reporte_validacion_estados_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            console.log('📊 Reporte de validación exportado:', reportData);
+        }
+    </script>
+</body>
+</html>

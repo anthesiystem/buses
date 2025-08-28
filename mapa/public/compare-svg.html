@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparador SVG - img-map vs mapa</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background: #f2f2f2;
+            font-weight: bold;
+        }
+        .missing {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .present {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .summary {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Comparador de Archivos SVG</h1>
+        <p>Herramienta para comparar <code>img-map.svg</code> vs <code>mapa.svg</code> y identificar datos faltantes.</p>
+        
+        <div class="summary" id="summary">
+            <h3>📊 Resumen de Comparación</h3>
+            <p>Carga ambos archivos SVG para ver las diferencias...</p>
+        </div>
+        
+        <div style="margin: 20px 0;">
+            <button class="btn" onclick="loadAndCompare()">🔄 Cargar y Comparar SVGs</button>
+            <button class="btn" onclick="generateEnhancementScript()">📝 Generar Script de Mejora</button>
+            <button class="btn" onclick="exportComparison()">📊 Exportar Comparación</button>
+        </div>
+        
+        <div id="comparisonResults"></div>
+    </div>
+
+    <script>
+        let imgMapData = {};
+        let mapaData = {};
+        let comparisonResults = {};
+
+        async function loadAndCompare() {
+            try {
+                console.log('🔄 Cargando archivos SVG...');
+                
+                // Cargar img-map.svg
+                const imgMapResponse = await fetch('img-map.svg');
+                const imgMapContent = await imgMapResponse.text();
+                
+                // Cargar mapa.svg
+                const mapaResponse = await fetch('mapa.svg');
+                const mapaContent = await mapaResponse.text();
+                
+                // Analizar ambos archivos
+                imgMapData = analyzeSVG(imgMapContent, 'img-map.svg');
+                mapaData = analyzeSVG(mapaContent, 'mapa.svg');
+                
+                // Realizar comparación
+                comparisonResults = compareData(imgMapData, mapaData);
+                
+                // Mostrar resultados
+                displayResults();
+                
+                console.log('✅ Comparación completada');
+                
+            } catch (error) {
+                console.error('❌ Error cargando archivos:', error);
+                document.getElementById('summary').innerHTML = `
+                    <h3>❌ Error de Carga</h3>
+                    <p>No se pudieron cargar los archivos SVG. Asegúrate de que estén en la misma carpeta.</p>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        }
+
+        function analyzeSVG(content, filename) {
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(content, 'image/svg+xml');
+            const paths = svgDoc.querySelectorAll('path');
+            
+            const data = {
+                filename: filename,
+                totalPaths: paths.length,
+                pathsWithId: 0,
+                pathsWithClass: 0,
+                pathsWithDataAttributes: 0,
+                stateData: [],
+                attributes: new Set(),
+                classes: new Set()
+            };
+            
+            paths.forEach((path, index) => {
+                const pathInfo = {
+                    index: index,
+                    id: path.getAttribute('id'),
+                    class: path.getAttribute('class'),
+                    dataEntidadId: path.getAttribute('data-entidad-id'),
+                    dataEntidadNombre: path.getAttribute('data-entidad-nombre'),
+                    dataEntidadName: path.getAttribute('data-entidad-name'),
+                    fill: path.getAttribute('fill'),
+                    stroke: path.getAttribute('stroke'),
+                    hasAttributes: false
+                };
+                
+                // Contar paths con diferentes atributos
+                if (pathInfo.id) {
+                    data.pathsWithId++;
+                    data.attributes.add('id');
+                }
+                if (pathInfo.class) {
+                    data.pathsWithClass++;
+                    data.attributes.add('class');
+                    data.classes.add(pathInfo.class);
+                }
+                if (pathInfo.dataEntidadId || pathInfo.dataEntidadNombre || pathInfo.dataEntidadName) {
+                    data.pathsWithDataAttributes++;
+                    data.attributes.add('data-entidad-*');
+                    pathInfo.hasAttributes = true;
+                }
+                
+                data.stateData.push(pathInfo);
+            });
+            
+            return data;
+        }
+
+        function compareData(imgData, mapaData) {
+            const results = {
+                summary: {
+                    imgMapPaths: imgData.totalPaths,
+                    mapaPaths: mapaData.totalPaths,
+                    pathsDifference: Math.abs(imgData.totalPaths - mapaData.totalPaths)
+                },
+                missingFeatures: {
+                    idsInImgMap: imgData.pathsWithId,
+                    idsInMapa: mapaData.pathsWithId,
+                    classesInImgMap: imgData.pathsWithClass,
+                    classesInMapa: mapaData.pathsWithClass,
+                    dataAttributesInImgMap: imgData.pathsWithDataAttributes,
+                    dataAttributesInMapa: mapaData.pathsWithDataAttributes
+                },
+                stateMapping: [],
+                recommendations: []
+            };
+            
+            // Analizar estados identificados en mapa.svg
+            mapaData.stateData.forEach(path => {
+                if (path.hasAttributes) {
+                    const stateInfo = {
+                        id: path.id,
+                        class: path.class,
+                        entidadId: path.dataEntidadId,
+                        entidadNombre: path.dataEntidadNombre || path.dataEntidadName,
+                        inImgMap: false
+                    };
+                    
+                    // Verificar si existe en img-map.svg
+                    const imgMapMatch = imgData.stateData.find(imgPath => 
+                        imgPath.id === path.id || 
+                        (imgPath.dataEntidadId === path.dataEntidadId && path.dataEntidadId)
+                    );
+                    
+                    if (imgMapMatch) {
+                        stateInfo.inImgMap = true;
+                    }
+                    
+                    results.stateMapping.push(stateInfo);
+                }
+            });
+            
+            // Generar recomendaciones
+            if (results.missingFeatures.idsInImgMap < results.missingFeatures.idsInMapa) {
+                results.recommendations.push('Añadir atributos ID a los paths de img-map.svg');
+            }
+            if (results.missingFeatures.classesInImgMap < results.missingFeatures.classesInMapa) {
+                results.recommendations.push('Añadir clases CSS a los paths de img-map.svg');
+            }
+            if (results.missingFeatures.dataAttributesInImgMap < results.missingFeatures.dataAttributesInMapa) {
+                results.recommendations.push('Añadir data-attributes de entidad a img-map.svg');
+            }
+            
+            return results;
+        }
+
+        function displayResults() {
+            const summary = document.getElementById('summary');
+            const resultsDiv = document.getElementById('comparisonResults');
+            
+            // Actualizar resumen
+            summary.innerHTML = `
+                <h3>📊 Resumen de Comparación</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4>📄 img-map.svg</h4>
+                        <ul>
+                            <li><strong>Total paths:</strong> ${imgMapData.totalPaths}</li>
+                            <li><strong>Con ID:</strong> ${imgMapData.pathsWithId}</li>
+                            <li><strong>Con clase:</strong> ${imgMapData.pathsWithClass}</li>
+                            <li><strong>Con data-attributes:</strong> ${imgMapData.pathsWithDataAttributes}</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>🗺️ mapa.svg</h4>
+                        <ul>
+                            <li><strong>Total paths:</strong> ${mapaData.totalPaths}</li>
+                            <li><strong>Con ID:</strong> ${mapaData.pathsWithId}</li>
+                            <li><strong>Con clase:</strong> ${mapaData.pathsWithClass}</li>
+                            <li><strong>Con data-attributes:</strong> ${mapaData.pathsWithDataAttributes}</li>
+                        </ul>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: ${comparisonResults.recommendations.length > 0 ? '#fff3cd' : '#d4edda'}; border-radius: 5px;">
+                    <strong>Estado:</strong> ${comparisonResults.recommendations.length === 0 ? '✅ Compatible' : `⚠️ ${comparisonResults.recommendations.length} mejoras recomendadas`}
+                </div>
+            `;
+            
+            // Mostrar tabla de comparación
+            let tableHTML = `
+                <h3>📋 Comparación Detallada</h3>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Estado/Entidad</th>
+                            <th>ID</th>
+                            <th>Clase</th>
+                            <th>En img-map.svg</th>
+                            <th>En mapa.svg</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            comparisonResults.stateMapping.forEach(state => {
+                const status = state.inImgMap ? 'present' : 'missing';
+                const statusText = state.inImgMap ? '✅ Presente' : '❌ Faltante';
+                
+                tableHTML += `
+                    <tr>
+                        <td>${state.entidadNombre || 'N/A'}</td>
+                        <td>${state.id || 'N/A'}</td>
+                        <td>${state.class || 'N/A'}</td>
+                        <td class="${status}">${state.inImgMap ? 'Sí' : 'No'}</td>
+                        <td class="present">Sí</td>
+                        <td class="${status}">${statusText}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            
+            // Mostrar recomendaciones
+            if (comparisonResults.recommendations.length > 0) {
+                tableHTML += `
+                    <h3>💡 Recomendaciones</h3>
+                    <ul>
+                        ${comparisonResults.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                `;
+            }
+            
+            resultsDiv.innerHTML = tableHTML;
+        }
+
+        function generateEnhancementScript() {
+            if (!comparisonResults.stateMapping) {
+                alert('❌ Primero ejecuta la comparación');
+                return;
+            }
+            
+            let script = `// Script generado automáticamente para mejorar img-map.svg\\n`;
+            script += `// Basado en la comparación con mapa.svg\\n\\n`;
+            script += `function enhanceImgMapSVG() {\\n`;
+            script += `    const svg = document.querySelector('svg');\\n`;
+            script += `    const paths = svg.querySelectorAll('path');\\n\\n`;
+            
+            comparisonResults.stateMapping.forEach((state, index) => {
+                if (!state.inImgMap && state.entidadNombre) {
+                    script += `    // ${state.entidadNombre}\\n`;
+                    script += `    if (paths[${index}]) {\\n`;
+                    script += `        paths[${index}].setAttribute('id', '${state.id}');\\n`;
+                    script += `        paths[${index}].setAttribute('class', '${state.class}');\\n`;
+                    script += `        paths[${index}].setAttribute('data-entidad-id', '${state.entidadId}');\\n`;
+                    script += `        paths[${index}].setAttribute('data-entidad-nombre', '${state.entidadNombre}');\\n`;
+                    script += `    }\\n\\n`;
+                }
+            });
+            
+            script += `    console.log('✅ SVG mejorado con ${comparisonResults.stateMapping.length} estados');\\n`;
+            script += `}\\n\\n`;
+            script += `// Ejecutar automáticamente\\n`;
+            script += `enhanceImgMapSVG();`;
+            
+            // Descargar el script
+            const blob = new Blob([script], { type: 'text/javascript' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'enhance-img-map.js';
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            alert('📝 Script de mejora generado y descargado como enhance-img-map.js');
+        }
+
+        function exportComparison() {
+            if (!comparisonResults.stateMapping) {
+                alert('❌ Primero ejecuta la comparación');
+                return;
+            }
+            
+            const reportData = {
+                fecha: new Date().toLocaleString(),
+                archivos: {
+                    imgMap: imgMapData.filename,
+                    mapa: mapaData.filename
+                },
+                resumen: comparisonResults.summary,
+                caracteristicasFaltantes: comparisonResults.missingFeatures,
+                mapeoEstados: comparisonResults.stateMapping,
+                recomendaciones: comparisonResults.recommendations
+            };
+            
+            const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `comparacion-svg-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            console.log('📊 Reporte de comparación exportado:', reportData);
+            alert('📊 Reporte de comparación exportado exitosamente');
+        }
+
+        // Cargar automáticamente al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(loadAndCompare, 1000); // Dar tiempo para que cargue la página
+        });
+    </script>
+</body>
+</html>

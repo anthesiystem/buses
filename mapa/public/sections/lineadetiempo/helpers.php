@@ -39,7 +39,7 @@ if (!function_exists('etapa_color_hex')) {
       'pruebas_unitarias' => '#202231',
       'pruebas_masivas'   => '#2d7fcf',
       'produccion'        => '#00b050',
-      'implementado'      => '#00ff73',
+      'implementado'      => '#394cf2',
     ];
     return $map[$slug] ?? '#198754';
   }

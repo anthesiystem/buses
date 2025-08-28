@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparación - Mapa General V1 vs V2</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .version-card {
+            background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .version-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+        }
+        
+        .version-card.v1 {
+            border-color: #2196f3;
+        }
+        
+        .version-card.v2 {
+            border-color: #4caf50;
+        }
+        
+        .version-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .version-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .version-icon.v1 {
+            background: linear-gradient(135deg, #2196f3, #21cbf3);
+        }
+        
+        .version-icon.v2 {
+            background: linear-gradient(135deg, #4caf50, #8bc34a);
+        }
+        
+        .version-title {
+            flex: 1;
+        }
+        
+        .version-title h2 {
+            margin: 0;
+            color: #333;
+            font-size: 1.5rem;
+        }
+        
+        .version-title p {
+            margin: 5px 0 0 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .features-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+        }
+        
+        .features-list li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        
+        .features-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn.v1 {
+            background: linear-gradient(135deg, #2196f3, #21cbf3);
+        }
+        
+        .btn.v2 {
+            background: linear-gradient(135deg, #4caf50, #8bc34a);
+        }
+        
+        .info-section {
+            background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+        
+        .info-section h3 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        
+        .tech-specs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .tech-spec {
+            background: rgba(255,255,255,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .tech-spec h4 {
+            margin: 0 0 8px 0;
+            color: #1976d2;
+            font-size: 0.9rem;
+        }
+        
+        .tech-spec p {
+            margin: 0;
+            color: #666;
+            font-size: 0.8rem;
+        }
+        
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tech-specs {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ Comparación Mapa General</h1>
+        
+        <div class="comparison-grid">
+            <!-- Versión 1 -->
+            <div class="version-card v1">
+                <div class="version-header">
+                    <div class="version-icon v1">V1</div>
+                    <div class="version-title">
+                        <h2>Versión Original</h2>
+                        <p>Mapa General Estándar</p>
+                    </div>
+                </div>
+                
+                <ul class="features-list">
+                    <li>Usa mapa.svg original del proyecto</li>
+                    <li>Sistema de colores tradicional</li>
+                    <li>Interfaz estándar establecida</li>
+                    <li>Compatible con el sistema actual</li>
+                    <li>Funcionalidad completa de comentarios</li>
+                    <li>Integración con base de datos</li>
+                    <li>Permisos y ACL implementados</li>
+                </ul>
+                
+                <a href="/final/mapa/public/sections/mapabus/general.php" class="btn v1" target="_blank">
+                    Ver Versión Original
+                </a>
+            </div>
+            
+            <!-- Versión 2 -->
+            <div class="version-card v2">
+                <div class="version-header">
+                    <div class="version-icon v2">V2</div>
+                    <div class="version-title">
+                        <h2>Versión Enhanced</h2>
+                        <p>Mapa General Mejorado</p>
+                    </div>
+                </div>
+                
+                <ul class="features-list">
+                    <li>Usa img-map-enhanced.svg con datos completos</li>
+                    <li>Diseño moderno con gradientes</li>
+                    <li>Interacciones mejoradas (zoom, arrastre)</li>
+                    <li>Panel de estadísticas en tiempo real</li>
+                    <li>Tooltips informativos avanzados</li>
+                    <li>Animaciones y transiciones suaves</li>
+                    <li>Detección automática de tipo de SVG</li>
+                    <li>Sistema de depuración integrado</li>
+                </ul>
+                
+                <a href="/final/mapa/public/sections/mapabus/general_v2.php" class="btn v2" target="_blank">
+                    Ver Versión Enhanced
+                </a>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h3>📊 Especificaciones Técnicas</h3>
+            <div class="tech-specs">
+                <div class="tech-spec">
+                    <h4>🗺️ Archivo SVG</h4>
+                    <p><strong>V1:</strong> mapa.svg (original)<br>
+                    <strong>V2:</strong> img-map-enhanced.svg (con datos)</p>
+                </div>
+                
+                <div class="tech-spec">
+                    <h4>🎨 Interfaz</h4>
+                    <p><strong>V1:</strong> Estándar CSS<br>
+                    <strong>V2:</strong> Gradientes y animaciones</p>
+                </div>
+                
+                <div class="tech-spec">
+                    <h4>🎮 Interacciones</h4>
+                    <p><strong>V1:</strong> Click básico<br>
+                    <strong>V2:</strong> Zoom, arrastre, hover avanzado</p>
+                </div>
+                
+                <div class="tech-spec">
+                    <h4>📈 Datos</h4>
+                    <p><strong>V1:</strong> Desde base de datos<br>
+                    <strong>V2:</strong> SVG + base de datos</p>
+                </div>
+                
+                <div class="tech-spec">
+                    <h4>🔧 Scripts</h4>
+                    <p><strong>V1:</strong> mapageneral.js<br>
+                    <strong>V2:</strong> mapageneral_v2.js</p>
+                </div>
+                
+                <div class="tech-spec">
+                    <h4>📱 Responsive</h4>
+                    <p><strong>V1:</strong> Básico<br>
+                    <strong>V2:</strong> Mejorado con estadísticas</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 25px; padding: 20px; background: rgba(76, 175, 80, 0.1); border-radius: 10px; border-left: 4px solid #4caf50;">
+                <h4 style="color: #388e3c; margin: 0 0 10px 0;">💡 Recomendación</h4>
+                <p style="margin: 0; color: #555;">
+                    La <strong>Versión 2 Enhanced</strong> está diseñada para aprovechar al máximo el archivo 
+                    <code>img-map-enhanced.svg</code> que incluye datos completos de entidad (IDs, nombres, clases). 
+                    Esto permite una experiencia más rica e informativa para los usuarios.
+                </p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <h3>🛠️ Herramientas de Desarrollo</h3>
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <a href="/final/mapa/public/demo-mapa.html" class="btn" target="_blank">
+                    🧪 Demo Interactivo
+                </a>
+                <a href="/final/mapa/public/compare-svg.html" class="btn" target="_blank">
+                    🔍 Comparador SVG
+                </a>
+                <button onclick="showDebugInfo()" class="btn">
+                    🐛 Info de Debug
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showDebugInfo() {
+            const debugInfo = `
+🐛 INFORMACIÓN DE DEBUG
+=====================================
+
+📁 Archivos principales:
+• /public/sections/mapabus/general.php (V1)
+• /public/sections/mapabus/general_v2.php (V2)
+• /server/mapag/mapageneral.js (V1)
+• /server/mapag/mapageneral_v2.js (V2)
+
+🗺️ Archivos SVG:
+• /public/mapa.svg (original)
+• /public/img-map.svg (básico)
+• /public/img-map-enhanced.svg (con datos)
+
+🔧 Herramientas:
+• /public/demo-mapa.html (editor/validador)
+• /public/compare-svg.html (comparador)
+
+💻 Variables globales V2:
+• window.debugInfoV2() - información detallada
+• window.mapV2 - objeto principal del mapa
+
+🎯 Para debugging en V2:
+1. Abre la consola del navegador
+2. Ejecuta: debugInfoV2()
+3. Revisa: window.mapV2
+
+📊 Estadísticas:
+• V1: Sistema establecido y probado
+• V2: ${document.querySelector('svg') ? 'SVG cargado' : 'SVG no detectado'}
+• Enhanced: ${window.location.href.includes('img-map-enhanced') ? 'Activo' : 'No detectado'}
+            `;
+            
+            alert(debugInfo);
+            console.log(debugInfo);
+        }
+        
+        // Mostrar información de carga
+        console.log(`
+🎉 COMPARADOR DE VERSIONES CARGADO
+===================================
+✅ Versión 1: /sections/mapabus/general.php
+✅ Versión 2: /sections/mapabus/general_v2.php
+🗺️ SVG Enhanced: /public/img-map-enhanced.svg
+🛠️ Herramientas: demo-mapa.html, compare-svg.html
+        `);
+    </script>
+</body>
+</html>
