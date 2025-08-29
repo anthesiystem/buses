@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Carga de Imágenes</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { margin: 20px 0; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        img { max-width: 200px; margin: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Test de Carga de Imágenes para PDF</h1>
+    
+    <div class="test-container">
+        <h2>Test de Estados</h2>
+        <div id="test-estados"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test de Plantillas</h2>
+        <div id="test-plantillas"></div>
+    </div>
+
+    <script>
+        const estados = [
+            'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
+            'Chiapas', 'Chihuahua', 'Ciudad de Mexico', 'Coahuila', 'Colima',
+            'Durango', 'Estado de Mexico', 'Guanajuato', 'Guerrero', 'Hidalgo',
+            'Jalisco', 'Michoacan', 'Morelos', 'Nayarit', 'Nuevo Leon', 'Oaxaca',
+            'Puebla', 'Queretaro', 'Quintana Roo', 'San Luis Potosi', 'Sinaloa',
+            'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatan', 'Zacatecas'
+        ];
+
+        async function testImagenExiste(url, tipo, nombre) {
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    return { success: true, message: `✅ ${tipo} ${nombre}: OK`, url: url };
+                } else {
+                    return { success: false, message: `❌ ${tipo} ${nombre}: Error ${response.status}`, url: url };
+                }
+            } catch (error) {
+                return { success: false, message: `❌ ${tipo} ${nombre}: ${error.message}`, url: url };
+            }
+        }
+
+        async function testearEstados() {
+            const container = document.getElementById('test-estados');
+            
+            for (const estado of estados) {
+                // Test escudo
+                const escudoUrl = `./img/escudos/${estado}.png`;
+                const escudoResult = await testImagenExiste(escudoUrl, 'Escudo', estado);
+                
+                // Test mapa
+                const mapaUrl = `./img/mapa_estados/${estado}.png`;
+                const mapaResult = await testImagenExiste(mapaUrl, 'Mapa', estado);
+                
+                // Mostrar resultados
+                const div = document.createElement('div');
+                div.className = 'test-result';
+                div.innerHTML = `
+                    <strong>${estado}</strong><br>
+                    <span class="${escudoResult.success ? 'success' : 'error'}">${escudoResult.message}</span><br>
+                    <span class="${mapaResult.success ? 'success' : 'error'}">${mapaResult.message}</span>
+                    ${escudoResult.success ? `<br><img src="${escudoResult.url}" alt="Escudo ${estado}">` : ''}
+                    ${mapaResult.success ? `<img src="${mapaResult.url}" alt="Mapa ${estado}">` : ''}
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        async function testearPlantillas() {
+            const container = document.getElementById('test-plantillas');
+            
+            const plantillas = [
+                { url: './img/hojaplantilla.png', nombre: 'Plantilla Vertical' },
+                { url: './img/hojaplantillahorizontal.png', nombre: 'Plantilla Horizontal' }
+            ];
+
+            for (const plantilla of plantillas) {
+                const result = await testImagenExiste(plantilla.url, 'Plantilla', plantilla.nombre);
+                
+                const div = document.createElement('div');
+                div.className = `test-result ${result.success ? 'success' : 'error'}`;
+                div.innerHTML = `
+                    ${result.message}
+                    ${result.success ? `<br><img src="${result.url}" alt="${plantilla.nombre}">` : ''}
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        // Ejecutar tests
+        document.addEventListener('DOMContentLoaded', async () => {
+            await testearEstados();
+            await testearPlantillas();
+        });
+    </script>
+</body>
+</html>

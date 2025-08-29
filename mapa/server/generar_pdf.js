@@ -1,4 +1,30 @@
-async function generarPDF() {
+// Función principal NUEVA para generar PDF (v2.0)
+async function generarPDF_v2() {
+  // Mostrar información// Cargar todas laconsole.log("Buscando imágenes para:", estadoFormateado);es con rutas absolutas
+console.log(`🔍 Cargando imágenes para el estado: ${estadoFormateado}`);
+
+// Función para detectar la ruta base correcta
+function detectarRutaBase() {
+    const currentPath = window.location.pathname;
+    console.log("📍 Ruta actual:", currentPath);
+    
+    if (currentPath.includes('/final/')) {
+        return '/final/mapa/public/img';
+    } else {
+        return '/mapa/public/img';
+    }
+}
+
+const rutaBase = detectarRutaBase();
+console.log("📁 Ruta base detectada:", rutaBase);
+
+const escudoEstado = await safeToBase64(`${rutaBase}/escudos/${estadoFormateado}.png`);
+const imgMapa = await safeToBase64(`${rutaBase}/mapa_estados/${estadoFormateado}.png`);
+const plantillaBase = await safeToBase64(`${rutaBase}/hojaplantilla.png`);bug
+  console.log("🚀 Iniciando generación de PDF... [VERSIÓN CORREGIDA v2.0]");
+  console.log("📍 URL actual:", window.location.href);
+  console.log("📁 Base URL:", window.location.origin);
+  
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -8,41 +34,137 @@ async function generarPDF() {
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const estado = document.getElementById("detalle").dataset.estado;
-if (!estado) {
-  alert("⚠️ Por favor selecciona un estado antes de generar el PDF.");
-  return;
-}
+  
+  // Intentar obtener el estado de diferentes fuentes
+  let estado = null;
+  
+  // Método 1: desde el elemento detalle
+  const detalleElement = document.getElementById("detalle");
+  if (detalleElement && detalleElement.dataset.estado) {
+    estado = detalleElement.dataset.estado;
+    console.log("Estado obtenido desde elemento #detalle:", estado);
+  }
+  
+  // Método 2: desde el elemento detalle-v2 (fallback)
+  if (!estado) {
+    const detalleV2Element = document.getElementById("detalle-v2");
+    if (detalleV2Element && detalleV2Element.dataset.estado) {
+      estado = detalleV2Element.dataset.estado;
+      console.log("Estado obtenido desde elemento #detalle-v2:", estado);
+    }
+  }
+  
+  // Método 3: desde el modal de detalles si está visible
+  if (!estado) {
+    const modalTitulo = document.querySelector("#modalDetalles .modal-title");
+    if (modalTitulo && modalTitulo.textContent) {
+      // Extraer el estado del título del modal
+      const match = modalTitulo.textContent.match(/Detalle de (.+)/);
+      if (match) {
+        estado = match[1].trim();
+        console.log("Estado obtenido desde título del modal:", estado);
+      }
+    }
+  }
+  
+  // Verificar si se pudo obtener el estado
+  if (!estado) {
+    alert("⚠️ Por favor selecciona un estado antes de generar el PDF.");
+    console.error("No se pudo obtener el estado desde ninguna fuente");
+    return;
+  }
+
+  console.log("Estado final a usar:", estado);
+
+  // Función para detectar la ruta base correcta
+  function detectarRutaBase() {
+      const currentPath = window.location.pathname;
+      console.log("📍 Ruta actual:", currentPath);
+      
+      if (currentPath.includes('/final/')) {
+          return '/final/mapa/public/img';
+      } else {
+          return '/mapa/public/img';
+      }
+  }
+
+  const rutaBase = detectarRutaBase();
+  console.log("📁 Ruta base detectada:", rutaBase);
 
   const fecha = new Date().toLocaleDateString("es-MX");
 
 // Cargar las imágenes necesarias
 console.log("Iniciando carga de imágenes para el estado:", estado);
 
-// Función para capitalizar la primera letra de cada palabra
-function capitalizarPalabras(str) {
-    return str.split(' ').map(word => 
+// Función para formatear el nombre del estado para coincidir con los archivos
+function formatearNombreEstado(estado) {
+    if (!estado) return "";
+    
+    // Limpiar el estado de espacios extra
+    let estadoLimpio = estado.trim();
+    
+    // Casos especiales conocidos
+    const casosEspeciales = {
+        'ciudad de mexico': 'Ciudad de Mexico',
+        'ciudad de méxico': 'Ciudad de Mexico',
+        'estado de mexico': 'Estado de Mexico',
+        'estado de méxico': 'Estado de Mexico',
+        'nuevo leon': 'Nuevo Leon',
+        'nuevo león': 'Nuevo Leon',
+        'san luis potosi': 'San Luis Potosi',
+        'san luis potosí': 'San Luis Potosi',
+        'queretaro': 'Queretaro',
+        'querétaro': 'Queretaro',
+        'yucatan': 'Yucatan',
+        'yucatán': 'Yucatan',
+        'michoacan': 'Michoacan',
+        'michoacán': 'Michoacan',
+        'baja california sur': 'Baja California Sur',
+        'baja california': 'Baja California',
+        'quintana roo': 'Quintana Roo'
+    };
+    
+    // Convertir a minúsculas para la comparación
+    const estadoMinusculas = estadoLimpio.toLowerCase();
+    
+    // Verificar casos especiales
+    if (casosEspeciales[estadoMinusculas]) {
+        return casosEspeciales[estadoMinusculas];
+    }
+    
+    // Formateo general: capitalizar primera letra de cada palabra
+    return estadoLimpio.split(' ').map(word => 
         word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
     ).join(' ');
 }
 
 // Formatear el nombre del estado para coincidir con el nombre del archivo
-const estadoFormateado = capitalizarPalabras(estado);
+const estadoFormateado = formatearNombreEstado(estado);
+
 console.log("Buscando imágenes para:", estadoFormateado);
 
-const escudoEstado = await safeToBase64('/mapa/public/img/escudos/' + estadoFormateado + '.png');
-if (!escudoEstado) {
-    console.error("No se pudo cargar el escudo del estado");
-}
+// Cargar todas las imágenes con rutas absolutas
+console.log(`� Cargando imágenes para el estado: ${estadoFormateado}`);
 
-const imgMapa = await safeToBase64('/mapa/public/img/mapa_estados/' + estadoFormateado + '.png');
-if (!imgMapa) {
-    console.error("No se pudo cargar el mapa del estado");
-}
+const escudoEstado = await safeToBase64(`/final/mapa/public/img/escudos/${estadoFormateado}.png`);
+const imgMapa = await safeToBase64(`/final/mapa/public/img/mapa_estados/${estadoFormateado}.png`);
+const plantillaBase = await safeToBase64('/final/mapa/public/img/hojaplantilla.png');
 
-const plantillaBase = await safeToBase64('/mapa/public/img/hojaplantilla.png');
-if (!plantillaBase) {
-    console.error("No se pudo cargar la plantilla base");
+// Verificar qué imágenes se cargaron exitosamente
+const imagenesNoEncontradas = [];
+if (!escudoEstado) imagenesNoEncontradas.push(`Escudo del estado (${estadoFormateado})`);
+if (!imgMapa) imagenesNoEncontradas.push(`Mapa del estado (${estadoFormateado})`);
+if (!plantillaBase) imagenesNoEncontradas.push('Plantilla base');
+
+if (imagenesNoEncontradas.length > 0) {
+    console.warn("⚠️ Imágenes no encontradas:", imagenesNoEncontradas);
+    const mensaje = `⚠️ No se pudieron cargar las siguientes imágenes:\n• ${imagenesNoEncontradas.join('\n• ')}\n\n¿Deseas continuar generando el PDF sin estas imágenes?`;
+    if (!confirm(mensaje)) {
+        console.log("❌ Generación de PDF cancelada por el usuario");
+        return;
+    }
+} else {
+    console.log("✅ Todas las imágenes se cargaron correctamente");
 }
 
 
@@ -229,7 +351,11 @@ for (let i = 0; i < catalogoCompleto.length; i += 2) {
 
   // ░░░ NUEVA PÁGINA CON FORMATO HORIZONTAL ░░░
 // ░░ PÁGINA HORIZONTAL ░░
-const plantillaHorizontal = await safeToBase64('/mapa/public/img/hojaplantillahorizontal.png');
+console.log("🔄 Cargando plantilla horizontal...");
+const plantillaHorizontal = await safeToBase64(`${rutaBase}/hojaplantillahorizontal.png`);
+if (!plantillaHorizontal) {
+    console.warn("⚠️ No se pudo cargar la plantilla horizontal");
+}
 
 // 📌 Ojo: en jsPDF 2.x la firma correcta es:
 doc.addPage('letter', 'l');   // 'l' = landscape (también vale 'landscape')
@@ -332,18 +458,34 @@ doc.save(`reporte_${estado}_${fecha.replaceAll('/', '-')}.pdf`);
   // ░░░ FUNCIONES AUXILIARES ░░░
   async function safeToBase64(path) {
     try {
-      console.log("Intentando cargar imagen desde:", path);
-      const res = await fetch(path);
+      console.log("🔄 Cargando imagen:", path);
+      
+      const res = await fetch(path, {
+        method: 'GET',
+        cache: 'no-cache'
+      });
+      
       if (!res.ok) {
-        console.error(`Error ${res.status} al cargar imagen:`, path);
-        throw new Error(`${res.status}`);
+        console.error(`❌ Error HTTP ${res.status}: ${res.statusText} para ${path}`);
+        return null;
       }
+      
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.startsWith('image/')) {
+        console.warn(`⚠️ Tipo de contenido inesperado: ${contentType} para ${path}`);
+      }
+      
       const blob = await res.blob();
+      if (blob.size === 0) {
+        console.error(`❌ Imagen vacía: ${path}`);
+        return null;
+      }
+      
       const base64 = await toBase64(blob);
-      console.log("Imagen cargada exitosamente:", path);
+      console.log(`✅ Imagen cargada exitosamente: ${path} (${blob.size} bytes)`);
       return base64;
     } catch (err) {
-      console.error("Error al cargar imagen:", path, err);
+      console.error(`❌ Error cargando imagen ${path}:`, err.message);
       return null;
     }
   }
@@ -356,4 +498,9 @@ doc.save(`reporte_${estado}_${fecha.replaceAll('/', '-')}.pdf`);
       reader.readAsDataURL(blob);
     });
   }
+}
+
+// Alias para compatibilidad con versiones anteriores
+async function generarPDF() {
+  return await generarPDF_v2();
 }

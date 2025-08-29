@@ -2,6 +2,7 @@
 // registros.php
 session_start();
 require_once '../../server/config.php';
+require_once '../../server/bitacora_helper.php';
 
 if (!isset($_SESSION['usuario_id'])) {
   header("Location: ../login.php");
@@ -12,6 +13,7 @@ if (!isset($_SESSION['usuario_id'])) {
    POST: insertar / actualizar
    =========================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  try {
   // 1) Tomar y sanear datos
   $ID              = isset($_POST['ID']) ? (int)$_POST['ID'] : 0;
   $Fk_dependencia  = ($_POST['Fk_dependencia'] ?? '') !== '' ? (int)$_POST['Fk_dependencia'] : null; // NULL permitido
@@ -86,7 +88,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   // 4) Guardar
+  $usuario_info = obtenerUsuarioSession();
+  $user_id = is_array($usuario_info) ? $usuario_info['user_id'] : $usuario_info;
+  
   if ($ID > 0) {
+    // Obtener datos anteriores para el log
+    $stmt_anterior = $pdo->prepare("
+      SELECT r.*, 
+             e.descripcion AS entidad_nombre,
+             d.descripcion AS dependencia_nombre,
+             b.descripcion AS bus_nombre,
+             t.descripcion AS tecnologia_nombre
+      FROM registro r
+      LEFT JOIN entidad e ON e.ID = r.Fk_entidad
+      LEFT JOIN dependencia d ON d.ID = r.Fk_dependencia  
+      LEFT JOIN bus b ON b.ID = r.Fk_bus
+      LEFT JOIN tecnologia t ON t.ID = r.Fk_tecnologia
+      WHERE r.ID = ?
+    ");
+    $stmt_anterior->execute([$ID]);
+    $datos_anteriores = $stmt_anterior->fetch(PDO::FETCH_ASSOC);
+    
     // UPDATE
     $stm = $pdo->prepare("
       UPDATE registro SET
@@ -110,6 +132,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $fecha_inicio, $fecha_migracion,
       $ID
     ]);
+    
+    // Registrar en bitácora
+    $descripcion_bitacora = "Registro ID $ID actualizado";
+    if ($datos_anteriores) {
+      $descripcion_bitacora .= " - Entidad: " . ($datos_anteriores['entidad_nombre'] ?? 'N/A');
+      if ($datos_anteriores['dependencia_nombre']) {
+        $descripcion_bitacora .= ", Dependencia: " . $datos_anteriores['dependencia_nombre'];
+      }
+      if ($datos_anteriores['bus_nombre']) {
+        $descripcion_bitacora .= ", Bus: " . $datos_anteriores['bus_nombre'];
+      }
+    }
+    
+    registrarBitacora(
+      $pdo, 
+      $user_id, 
+      'registro', 
+      'UPDATE', 
+      $descripcion_bitacora, 
+      $ID
+    );
+    
   } else {
     // INSERT
     $stmt = $pdo->prepare("
@@ -124,27 +168,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $Fk_categoria, $Fk_etapa,
       $fecha_inicio, $fecha_migracion
     ]);
+    $ID = $pdo->lastInsertId();
+    
+    // Obtener nombres para el log
+    $stmt_nombres = $pdo->prepare("
+      SELECT e.descripcion AS entidad_nombre,
+             d.descripcion AS dependencia_nombre,
+             b.descripcion AS bus_nombre,
+             t.descripcion AS tecnologia_nombre
+      FROM registro r
+      LEFT JOIN entidad e ON e.ID = r.Fk_entidad
+      LEFT JOIN dependencia d ON d.ID = r.Fk_dependencia  
+      LEFT JOIN bus b ON b.ID = r.Fk_bus
+      LEFT JOIN tecnologia t ON t.ID = r.Fk_tecnologia
+      WHERE r.ID = ?
+    ");
+    $stmt_nombres->execute([$ID]);
+    $nombres = $stmt_nombres->fetch(PDO::FETCH_ASSOC);
+    
+    // Registrar en bitácora
+    $descripcion_bitacora = "Nuevo registro ID $ID creado";
+    if ($nombres) {
+      $descripcion_bitacora .= " - Entidad: " . ($nombres['entidad_nombre'] ?? 'N/A');
+      if ($nombres['dependencia_nombre']) {
+        $descripcion_bitacora .= ", Dependencia: " . $nombres['dependencia_nombre'];
+      }
+      if ($nombres['bus_nombre']) {
+        $descripcion_bitacora .= ", Bus: " . $nombres['bus_nombre'];
+      }
+      if ($nombres['tecnologia_nombre']) {
+        $descripcion_bitacora .= ", Tecnología: " . $nombres['tecnologia_nombre'];
+      }
+    }
+    
+    registrarBitacora(
+      $pdo, 
+      $user_id, 
+      'registro', 
+      'INSERT', 
+      $descripcion_bitacora, 
+      $ID
+    );
   }
 
   // 5) Redirigir al listado correcto
   // 5) Responder o redirigir
-$isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) 
-          && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+$isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) 
+          && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+          || (!empty($_POST['ajax']) && $_POST['ajax'] === '1');
 
 if ($isAjax) {
   header('Content-Type: application/json; charset=utf-8');
   echo json_encode([
     'ok'     => true,
-    'status' => ($ID > 0 ? 'updated' : 'created')
+    'status' => ($ID > 0 ? 'updated' : 'created'),
+    'id'     => $ID
   ]);
   exit;
 }
 
-// Si NO es AJAX, utiliza return_url si viene; si no, manda a regprueba.php
-$return = $_POST['return_url'] ?? ('regprueba.php?ok=' . ($ID > 0 ? 'updated' : 'created'));
+// Si NO es AJAX, construir URL con parámetros de paginación
+$baseUrl = 'regprueba.php?ok=' . ($ID > 0 ? 'updated' : 'created');
+
+error_log("Construyendo URL - ID: $ID, baseUrl: $baseUrl");
+error_log("POST data: " . print_r($_POST, true));
+
+// Agregar parámetros de paginación si existen
+if (!empty($_POST['current_page']) && $_POST['current_page'] > 1) {
+  $baseUrl .= '&page=' . (int)$_POST['current_page'];
+  error_log("Agregando page: " . (int)$_POST['current_page']);
+}
+if (!empty($_POST['per_page']) && $_POST['per_page'] != 10) {
+  $baseUrl .= '&per_page=' . (int)$_POST['per_page'];
+  error_log("Agregando per_page: " . (int)$_POST['per_page']);
+}
+if (!empty($_POST['search_term'])) {
+  $baseUrl .= '&search=' . urlencode($_POST['search_term']);
+  error_log("Agregando search: " . $_POST['search_term']);
+}
+
+error_log("URL final: $baseUrl");
+
+$return = $_POST['return_url'] ?? $baseUrl;
 header("Location: $return");
 exit;
 
+  } catch (Exception $e) {
+    error_log("Error en regprueba.php: " . $e->getMessage());
+    
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) 
+              && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    
+    if ($isAjax) {
+      header('Content-Type: application/json; charset=utf-8');
+      echo json_encode([
+        'ok'  => false,
+        'msg' => 'Error interno del servidor: ' . $e->getMessage()
+      ]);
+      exit;
+    } else {
+      header("Location: regprueba.php?error=" . urlencode($e->getMessage()));
+      exit;
+    }
+  }
 }
 
 /* ===========================
@@ -483,6 +609,9 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
         <div class="modal-body">
           <input type="hidden" name="ID" id="ID">
+          <input type="hidden" name="current_page" id="current_page" value="1">
+          <input type="hidden" name="per_page" id="per_page" value="10">
+          <input type="hidden" name="search_term" id="search_term" value="">
 
           <!-- Ubicación -->
           <fieldset class="fieldset-card mb-3">
@@ -932,34 +1061,7 @@ document.addEventListener('DOMContentLoaded', () => {
   selEstado?.addEventListener('change', applyEstadoRules);
   applyEstadoRules(); // al cargar (por si se abre para editar)
 
-  // Validación extra al enviar (refuerza reglas por si el usuario truquea DOM)
-  form.addEventListener('submit', (e) => {
-    if (!form.checkValidity()) { form.reportValidity(); e.preventDefault(); return; }
-
-    const txt = getText(selEstado).toLowerCase();
-    const optEtapa = selEtapa?.selectedOptions?.[0] || null;
-    const etapaPct = optEtapa && optEtapa.dataset.avance ? parseInt(optEtapa.dataset.avance, 10) : null;
-
-    // Sin implementar -> forzar NULL en etapa y fecha_migracion
-    if (/sin implementar/.test(txt)) {
-      selEtapa.value = '';
-      fm.value = '';
-    }
-
-    // En pruebas -> etapa NO 100
-    if (/prueba/.test(txt) && etapaPct === 100) {
-      e.preventDefault();
-      selEtapa.value = '';
-      alert('En "En pruebas" la etapa no puede ser 100%. Selecciona otra etapa.');
-      return;
-    }
-
-    // Implementado -> etapa = 100 automática
-    if (/implementado/.test(txt)) {
-      const opt100 = pickEtapa100();
-      if (opt100) selEtapa.value = opt100.value;
-    }
-  });
+  // Las validaciones se harán en el listener principal de submit más abajo
 });
 </script>
 
@@ -975,9 +1077,9 @@ document.addEventListener('DOMContentLoaded', () => {
     form.ID.value = '';
     const helper = document.getElementById('helperEtapa');
     if (helper) helper.textContent = 'Seleccione una etapa para ver su porcentaje.';
-    // set return_url al URL actual
-    const ru = document.getElementById('return_url');
-    if (ru) ru.value = window.location.href;
+    
+    // Actualizar campos de paginación
+    updatePaginationFields();
 
     new bootstrap.Modal(modalEl).show();
   };
@@ -1002,48 +1104,130 @@ document.addEventListener('DOMContentLoaded', () => {
       helperEtapa.textContent = 'Seleccione una etapa para ver su porcentaje.';
     }
 
-    // set return_url
-    const ru = document.getElementById('return_url');
-    if (ru) ru.value = window.location.href;
+    // Actualizar campos de paginación
+    updatePaginationFields();
 
     new bootstrap.Modal(modalEl).show();
   };
 
+  // Función para actualizar los campos de paginación
+  function updatePaginationFields() {
+    // Obtener estado actual de paginación desde el script de paginación
+    if (window.paginationState) {
+      const currentPageField = document.getElementById('current_page');
+      const perPageField = document.getElementById('per_page');
+      const searchTermField = document.getElementById('search_term');
+      
+      if (currentPageField) currentPageField.value = window.paginationState.page || 1;
+      if (perPageField) perPageField.value = window.paginationState.perPage || 10;
+      if (searchTermField) searchTermField.value = window.paginationState.term || '';
+    }
+  }
+
   // Submit por AJAX (mantiene la vista en index.php)
   form.addEventListener('submit', async (e) => {
-    // Si el form no es válido, deja que tus validaciones previas actúen
-    if (!form.checkValidity()) return;
-
-    // Evita navegación
+    // Evita navegación por defecto
     e.preventDefault();
 
-    // Muestra overlay (ya lo hacías en otro listener; por si acaso)
+    // Validaciones de formulario
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    // Obtener referencias a los campos
+    const selEstado = form.querySelector('[name="Fk_estado_bus"]');
+    const selEtapa = form.querySelector('#Fk_etapa');
+    const fm = form.querySelector('[name="fecha_migracion"]');
+
+    // Función auxiliar para obtener texto
+    const getText = (selectEl) => selectEl?.options[selectEl.selectedIndex]?.text?.trim() || '';
+
+    // Validaciones específicas del negocio
+    const txt = getText(selEstado).toLowerCase();
+    const optEtapa = selEtapa?.selectedOptions?.[0] || null;
+    const etapaPct = optEtapa && optEtapa.dataset.avance ? parseInt(optEtapa.dataset.avance, 10) : null;
+
+    // Sin implementar -> forzar NULL en etapa y fecha_migracion
+    if (/sin implementar/.test(txt)) {
+      selEtapa.value = '';
+      fm.value = '';
+    }
+
+    // En pruebas -> etapa NO 100
+    if (/prueba/.test(txt) && etapaPct === 100) {
+      selEtapa.value = '';
+      alert('En "En pruebas" la etapa no puede ser 100%. Selecciona otra etapa.');
+      return;
+    }
+
+    // Implementado -> etapa = 100 automática
+    if (/implementado/.test(txt)) {
+      const pickEtapa100 = () => {
+        return Array.from(selEtapa.options).find(o => (o.dataset?.avance|0) === 100) || null;
+      };
+      const opt100 = pickEtapa100();
+      if (opt100) selEtapa.value = opt100.value;
+    }
+
+    // Muestra overlay de carga
     if (overlayCargando) overlayCargando.style.display = 'block';
 
     try {
       const fd = new FormData(form);
+      
+      // Agregar información de paginación
+      if (window.paginationState) {
+        fd.set('current_page', window.paginationState.page || 1);
+        fd.set('per_page', window.paginationState.perPage || 10);
+        fd.set('search_term', window.paginationState.term || '');
+      }
+      
+      // Agregar marcador AJAX como respaldo
+      fd.set('ajax', '1');
+
       const resp = await fetch(form.action, {
         method: 'POST',
         body: fd,
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }, // <- activa respuesta JSON en PHP
-        cache: 'no-store'
+        headers: { 
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(30000) // 30 segundos timeout
       });
 
-      const ct = resp.headers.get('content-type') || '';
       if (!resp.ok) {
         const txt = await resp.text();
         console.error('HTTP', resp.status, txt);
-        alert('Error al guardar.');
+        alert('Error del servidor: ' + resp.status);
         return;
       }
 
+      const ct = resp.headers.get('content-type') || '';
       let data = {};
+      
       if (ct.includes('application/json')) {
         data = await resp.json();
       } else {
-        // Si el servidor devolviera HTML, puedes inyectarlo:
-        const dlg = modalEl.querySelector('.modal-dialog');
-        dlg.innerHTML = await resp.text();
+        // Si no es JSON, probablemente sea una redirección o HTML de error
+        console.warn('Respuesta no JSON:', ct);
+        // En este caso, vamos a recargar la página con los parámetros
+        const url = new URL(window.location.href);
+        url.searchParams.set('ok', 'updated');
+        
+        if (window.paginationState) {
+          if (window.paginationState.page > 1) {
+            url.searchParams.set('page', window.paginationState.page);
+          }
+          if (window.paginationState.perPage !== 10) {
+            url.searchParams.set('per_page', window.paginationState.perPage);
+          }
+          if (window.paginationState.term) {
+            url.searchParams.set('search', window.paginationState.term);
+          }
+        }
+        
+        window.location.href = url.toString();
         return;
       }
 
@@ -1052,30 +1236,52 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = bootstrap.Modal.getInstance(modalEl);
         modal && modal.hide();
 
-        // ¿Estoy en index.php? refresca tabla vía función si existe, o recarga suave
-        if (location.pathname.endsWith('/index.php')) {
-          if (window.recargarTablaRegistros) {
-            await window.recargarTablaRegistros();
+        // Construir URL con parámetros de paginación
+        const url = new URL(window.location.href);
+        url.searchParams.set('ok', data.status); // created|updated
+        
+        // Agregar parámetros de paginación actuales
+        if (window.paginationState) {
+          if (window.paginationState.page > 1) {
+            url.searchParams.set('page', window.paginationState.page);
           } else {
-            // fallback
-            location.reload();
+            url.searchParams.delete('page');
           }
-        } else {
-          // En regprueba.php, puedes simular la redirección con parámetro ok
-          const url = new URL(window.location.href);
-          url.searchParams.set('ok', data.status); // created|updated
-          window.location.href = url.toString();
+          
+          if (window.paginationState.perPage !== 10) {
+            url.searchParams.set('per_page', window.paginationState.perPage);
+          } else {
+            url.searchParams.delete('per_page');
+          }
+          
+          if (window.paginationState.term) {
+            url.searchParams.set('search', window.paginationState.term);
+          } else {
+            url.searchParams.delete('search');
+          }
         }
+        
+        window.location.href = url.toString();
       } else {
         alert(data.msg || 'No se pudo guardar.');
       }
     } catch (err) {
-      console.error(err);
-      alert('Error de red al guardar.');
+      console.error('Error en la petición:', err);
+      
+      let errorMsg = 'Error de conexión.';
+      if (err.name === 'AbortError') {
+        errorMsg = 'La petición tardó demasiado tiempo. Inténtalo de nuevo.';
+      } else if (err.name === 'TypeError') {
+        errorMsg = 'Error de red. Verifica tu conexión a internet.';
+      } else if (err.message) {
+        errorMsg = 'Error: ' + err.message;
+      }
+      
+      alert(errorMsg + ' Si el problema persiste, recarga la página.');
     } finally {
       if (overlayCargando) overlayCargando.style.display = 'none';
     }
-  }, true);
+  });
 })();
 </script>
 <script>
@@ -1108,6 +1314,45 @@ document.addEventListener('DOMContentLoaded', () => {
     filtered: rows  // filas que pasan el filtro de búsqueda
   };
 
+  // Exponer estado globalmente para otros scripts
+  window.paginationState = state;
+
+  // Restaurar estado desde URL al cargar la página
+  function restoreStateFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Marcar que estamos restaurando desde URL
+    window.restoringFromURL = true;
+    
+    // Restaurar página
+    const pageParam = urlParams.get('page');
+    if (pageParam) {
+      state.page = parseInt(pageParam, 10) || 1;
+    }
+    
+    // Restaurar elementos por página
+    const perPageParam = urlParams.get('per_page');
+    if (perPageParam && perPageSel) {
+      const perPageValue = parseInt(perPageParam, 10);
+      if ([10, 20, 30, 50, 100].includes(perPageValue)) {
+        state.perPage = perPageValue;
+        perPageSel.value = perPageValue.toString();
+      }
+    }
+    
+    // Restaurar término de búsqueda
+    const searchParam = urlParams.get('search');
+    if (searchParam && q) {
+      state.term = searchParam;
+      q.value = searchParam;
+    }
+    
+    // Desmarcar después de un momento
+    setTimeout(() => {
+      window.restoringFromURL = false;
+    }, 100);
+  }
+
   // Helpers
   const normalize = (s) => (s || '').toString().trim().toLowerCase();
 
@@ -1117,8 +1362,10 @@ document.addEventListener('DOMContentLoaded', () => {
       ? rows.filter(r => r.innerText.toLowerCase().includes(t))
       : rows.slice();
 
-    // Reinicia a primera página si se reduce el universo
-    state.page = 1;
+    // Solo reinicia a primera página si no estamos restaurando desde URL
+    if (!window.restoringFromURL) {
+      state.page = 1;
+    }
     renderPage();
   }
 
@@ -1169,6 +1416,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (q) {
     q.addEventListener('input', () => {
       state.term = q.value;
+      // Solo reiniciar página si no estamos restaurando
+      if (!window.restoringFromURL) {
+        state.page = 1;
+      }
       applySearch();
     });
   }
@@ -1256,10 +1507,58 @@ document.addEventListener('DOMContentLoaded', () => {
   btnNext ?.addEventListener('click', () => { state.page++;  renderPage(); });
   btnLast ?.addEventListener('click', () => { state.page = getTotalPages(); renderPage(); });
 
-  // Inicializa
+  // Función para actualizar URL con parámetros de paginación
+  function updateURL() {
+    const url = new URL(window.location.href);
+    
+    // Limpiar parámetros de notificación
+    url.searchParams.delete('ok');
+    
+    // Actualizar parámetros de paginación
+    if (state.page > 1) {
+      url.searchParams.set('page', state.page);
+    } else {
+      url.searchParams.delete('page');
+    }
+    
+    if (state.perPage !== 10) {
+      url.searchParams.set('per_page', state.perPage);
+    } else {
+      url.searchParams.delete('per_page');
+    }
+    
+    if (state.term) {
+      url.searchParams.set('search', state.term);
+    } else {
+      url.searchParams.delete('search');
+    }
+    
+    // Actualizar URL sin recargar
+    window.history.replaceState({}, '', url.toString());
+  }
+
+  // Modificar la función renderPage para que llame a updateURL
+  const originalRenderPage = renderPage;
+  renderPage = function() {
+    console.log('renderPage llamado con página:', state.page);
+    originalRenderPage();
+    updateURL();
+  };
+
+  // Restaurar estado desde URL y luego inicializar
+  restoreStateFromURL();
+  console.log('Estado después de restaurar:', {
+    page: state.page,
+    perPage: state.perPage,
+    term: state.term,
+    urlParams: window.location.search
+  });
   applySearch(); // esto ya llama a renderPage()
 })();
 </script>
+
+<!-- Sistema de registro de vistas en bitácora -->
+<script src="../assets/js/bitacora_tracker.js"></script>
 
 </body>
 </html>

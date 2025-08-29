@@ -160,6 +160,10 @@ foreach ($buses as $bus):
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Sistema de registro de vistas en bitácora -->
+  <script src="assets/js/bitacora_tracker.js"></script>
+  
   <script>
     const toggleBtn = document.getElementById("toggleSidebar");
     toggleBtn?.addEventListener("click", () => {

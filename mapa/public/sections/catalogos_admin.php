@@ -6,7 +6,9 @@
  ************************************************************/
 
 // --- Conexión (ajusta la ruta si aplica) ---
+session_start();
 require_once '../../server/config.php';
+require_once '../../server/bitacora_helper.php';
 
 // (Opcional) Autenticación / ACL
 // require_once __DIR__ . '/../../../server/auth.php';
@@ -112,7 +114,15 @@ if (isset($_GET['api'])) {
         $data = [];
         foreach ($cols as $c) { $data[$c] = trim((string)($_POST[$c] ?? '')); }
 
+        $usuario_info = obtenerUsuarioSession();
+
         if ($id > 0) {
+          // Obtener datos anteriores para el log
+          $selectCols = implode(",", array_map(fn($c)=>"`$c`", $cols));
+          $stmt_anterior = $pdo->prepare("SELECT $selectCols FROM `$tabla` WHERE ID = ?");
+          $stmt_anterior->execute([$id]);
+          $datos_anteriores = $stmt_anterior->fetch(PDO::FETCH_ASSOC);
+          
           $sets = [];
           $params = [];
           foreach ($data as $c=>$v){ $sets[] = "`$c` = ?"; $params[] = $v; }
@@ -120,6 +130,29 @@ if (isset($_GET['api'])) {
           $sql = "UPDATE `$tabla` SET ".implode(", ",$sets)." WHERE ID = ?";
           $st  = $pdo->prepare($sql);
           $st->execute($params);
+          
+          // Registrar en bitácora
+          $nombre_item = $data['descripcion'] ?? $data[array_keys($data)[0]] ?? "ID $id";
+          $cambios = [];
+          foreach ($cols as $col) {
+            if (($datos_anteriores[$col] ?? '') !== ($data[$col] ?? '')) {
+              $cambios[] = "$col: '" . ($datos_anteriores[$col] ?? '') . "' → '" . ($data[$col] ?? '') . "'";
+            }
+          }
+          $descripcion_bitacora = "Actualización en $tabla '$nombre_item'";
+          if (!empty($cambios)) {
+            $descripcion_bitacora .= " - Cambios: " . implode(", ", $cambios);
+          }
+          
+          registrarBitacora(
+            $pdo, 
+            $usuario_info['user_id'], 
+            $tabla, 
+            'UPDATE', 
+            $descripcion_bitacora, 
+            $id
+          );
+          
           ok(['msg'=>'Actualizado','id'=>$id]);
         } else {
           $colsSql = implode(",", array_map(fn($c)=>"`$c`", array_keys($data)));
@@ -127,7 +160,31 @@ if (isset($_GET['api'])) {
           $sql = "INSERT INTO `$tabla` ($colsSql) VALUES ($qsSql)";
           $st  = $pdo->prepare($sql);
           $st->execute(array_values($data));
-          ok(['msg'=>'Creado','id'=>$pdo->lastInsertId()]);
+          $new_id = $pdo->lastInsertId();
+          
+          // Registrar en bitácora
+          $nombre_item = $data['descripcion'] ?? $data[array_keys($data)[0]] ?? "ID $new_id";
+          $descripcion_bitacora = "Nuevo registro en $tabla '$nombre_item'";
+          $detalles = [];
+          foreach ($data as $key => $value) {
+            if (!empty($value)) {
+              $detalles[] = "$key: '$value'";
+            }
+          }
+          if (!empty($detalles)) {
+            $descripcion_bitacora .= " - " . implode(", ", $detalles);
+          }
+          
+          registrarBitacora(
+            $pdo, 
+            $usuario_info['user_id'], 
+            $tabla, 
+            'INSERT', 
+            $descripcion_bitacora, 
+            $new_id
+          );
+          
+          ok(['msg'=>'Creado','id'=>$new_id]);
         }
       }
 
@@ -135,11 +192,20 @@ if (isset($_GET['api'])) {
         $id = (int)($_POST['id'] ?? 0);
         if ($id <= 0) bad_request('ID inválido');
 
-        // Lee estado actual
-        $st = $pdo->prepare("SELECT CAST(activo AS UNSIGNED) AS act FROM `$tabla` WHERE ID=?");
-        $st->execute([$id]);
-        $act = (int)$st->fetchColumn();
-
+        // Obtener información del registro antes del cambio
+        $selectCols = "CAST(activo AS UNSIGNED) AS act";
+        if (in_array('descripcion', $cols)) {
+          $selectCols .= ", descripcion";
+        } else if (!empty($cols)) {
+          $selectCols .= ", " . $cols[0];
+        }
+        $st_info = $pdo->prepare("SELECT $selectCols FROM `$tabla` WHERE ID=?");
+        $st_info->execute([$id]);
+        $info = $st_info->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$info) bad_request('Registro no encontrado');
+        
+        $act = (int)$info['act'];
         $new = $act ? 0 : 1;
         $bit = $new ? "b'1'" : "b'0'";
 
@@ -153,6 +219,22 @@ if (isset($_GET['api'])) {
         }
         $st = $pdo->prepare($sql);
         $st->execute([$id]);
+
+        // Registrar en bitácora
+        $usuario_info = obtenerUsuarioSession();
+        $nombre_item = $info['descripcion'] ?? $info[$cols[0]] ?? "ID $id";
+        $accion = $new ? 'ACTIVAR' : 'DESACTIVAR';
+        $accion_texto = $new ? 'activado' : 'desactivado';
+        $descripcion_bitacora = "Registro en $tabla '$nombre_item' $accion_texto";
+        
+        registrarBitacora(
+          $pdo, 
+          $usuario_info['user_id'], 
+          $tabla, 
+          $accion, 
+          $descripcion_bitacora, 
+          $id
+        );
 
         ok(['msg'=>'Estado actualizado','activo'=>$new]);
       }
@@ -176,6 +258,44 @@ if (isset($_GET['api'])) {
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
+    :root{
+      --brand:#7b1e2b; --brand-600:#8e2433; --brand-700:#661822; --brand-rgb:123,30,43;
+      --ink:#1f2937; --muted:#6b7280; --row-hover:rgba(var(--brand-rgb),.04); --row-selected:rgba(var(--brand-rgb),.08);
+      --header-bg:#ffffff; --header-border:#e5e7eb; --table-border:#e5e7eb; --badge-bg:#f3f4f6;
+    }
+    body{ color:var(--ink); background:#fafafa; }
+    .page-title{ font-weight:700; letter-spacing:.2px; }
+    .btn-brand{
+      --bs-btn-bg:var(--brand); --bs-btn-border-color:var(--brand);
+      --bs-btn-hover-bg:var(--brand-600); --bs-btn-hover-border-color:var(--brand-600);
+      --bs-btn-active-bg:var(--brand-700); --bs-btn-active-border-color:var(--brand-700);
+      --bs-btn-color:#fff;
+    }
+    .btn-outline-brand{
+      --bs-btn-color:var(--brand); --bs-btn-border-color:var(--brand);
+      --bs-btn-hover-bg:var(--brand); --bs-btn-hover-border-color:var(--brand);
+      --bs-btn-hover-color:#fff;
+    }
+    .table-card{
+      background:#fff; border:1px solid var(--table-border);
+      border-radius:14px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.04);
+    }
+    .table-responsive{ max-height:70vh; }
+    .table-brand thead th{
+      position:sticky; top:0; z-index:5; background:var(--header-bg);
+      border-bottom:1px solid var(--header-border); color:var(--muted);
+      font-weight:700; text-transform:uppercase; font-size:.78rem; letter-spacing:.5px; cursor:pointer;
+    }
+    .table-brand tbody td{ vertical-align:middle; border-color:var(--table-border); }
+    .table-brand tbody tr:hover{ background:var(--row-hover); }
+    .table-brand tbody tr.selected{ background:var(--row-selected); box-shadow:inset 4px 0 0 var(--brand); }
+    .badge-soft{ background:var(--badge-bg); color:var(--ink); border:1px solid #e5e7eb; font-weight:600; }
+    .actions .btn{ padding:.25rem .5rem; }
+    @media (max-width:768px){
+      .col-sm-hide{ display:none; }
+      .actions .btn .text{ display:none; }
+    }
+    
     .toolbar{ gap:.5rem; }
     .density-compact table tbody tr td{ padding:.35rem .5rem; }
     .state-dot{ display:inline-block; width:.65rem; height:.65rem; border-radius:50%; vertical-align:middle; margin-right:.35rem; }
@@ -231,18 +351,20 @@ if (isset($_GET['api'])) {
           </div>
 
           <!-- Tabla -->
-          <div class="table-wrap">
-            <table class="table table-striped table-hover align-middle text-center mb-0" id="table-<?= $key ?>">
-              <thead class="table-dark">
-                <tr>
-                  <?php foreach($meta['listCols'] as $c): ?>
-                    <th><?= htmlspecialchars(ucfirst(str_replace('_',' ',$c))) ?></th>
-                  <?php endforeach; ?>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+          <div class="table-card">
+            <div class="table-responsive">
+              <table class="table table-hover table-brand align-middle m-0" id="table-<?= $key ?>">
+                <thead>
+                  <tr>
+                    <?php foreach($meta['listCols'] as $c): ?>
+                      <th><?= htmlspecialchars(ucfirst(str_replace('_',' ',$c))) ?></th>
+                    <?php endforeach; ?>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Paginación (cliente) -->
@@ -520,5 +642,8 @@ async function toggleActivo(tabla, id) {
     // Utilidad: escapado simple
     function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
   </script>
+  
+  <!-- Sistema de registro de vistas en bitácora -->
+  <script src="../assets/js/bitacora_tracker.js"></script>
 </body>
 </html>

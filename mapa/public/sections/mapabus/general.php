@@ -368,7 +368,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     src="/final/mapa/server/mapag/mapageneral.js?v=2"
     data-color-concluido="#04a404b6"
     data-color-sin-ejecutar="#B0B0B0"
-    data-color-otro="#e1d071ff"
+    data-color-otro="#FFE162"
     data-url-datos="/final/mapa/server/mapag/generalindex.php"
     data-url-detalle="/final/mapa/server/mapag/detalle.php"
     data-catalogo-buses='<?= json_encode($catalogoBuses, JSON_UNESCAPED_UNICODE) ?>'
@@ -622,7 +622,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script>window.jsPDF = window.jspdf.jsPDF;</script>
-<script src="/final/mapa/server/generar_pdf.js"></script>
+<script src="/final/mapa/server/generar_pdf_v2.js?v=<?php echo time(); ?>"></script>
+<script src="/final/mapa/public/debug_rutas.js?v=<?php echo time(); ?>"></script>
+<script src="/final/mapa/public/debug_tabla.js?v=<?php echo time(); ?>"></script>
+<script src="/final/mapa/public/test_pdf.js?v=<?php echo time(); ?>"></script>
 
 <!-- Script de prueba para verificar el borde punteado -->
 <script>

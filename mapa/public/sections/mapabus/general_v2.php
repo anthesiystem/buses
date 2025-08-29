@@ -993,7 +993,7 @@ document.addEventListener("DOMContentLoaded", function () {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script>window.jsPDF = window.jspdf.jsPDF;</script>
-<script src="/final/mapa/server/generar_pdf.js"></script>
+<script src="/final/mapa/server/generar_pdf_v2.js?v=<?php echo time(); ?>"></script>
 
 <!-- Mensaje de bienvenida para V2 -->
 <script>

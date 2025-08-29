@@ -1,7 +1,9 @@
 <?php
-// Ruta: /final/mapa/public/sections/usuarios/api/persona_guardar.php
+// /final/mapa/public/sections/usuarios/api/persona_guardar.php
+session_start();
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../../../../server/config.php';
+require_once __DIR__ . '/../../../../server/bitacora_helper.php';
 
 function jerr($msg){ echo json_encode(['ok'=>false,'msg'=>$msg], JSON_UNESCAPED_UNICODE); exit; }
 function val($k){ return isset($_POST[$k]) ? trim((string)$_POST[$k]) : ''; }
@@ -14,7 +16,12 @@ $numero_empleado  = val('numero_empleado');
 $correo           = val('correo');
 $Fk_dependencia   = (int)val('Fk_dependencia');
 $Fk_entidad       = (int)val('Fk_entidad');
-$activo           = (val('activo') === '1') ? 1 : 0;
+
+function to01($v){
+  $v = strtolower(trim((string)$v));
+  return in_array($v, ['1','true','on','si','sí','yes']) ? 1 : 0;
+}
+$activo = to01($_POST['activo'] ?? '1');
 
 // --------- Validaciones básicas ---------
 if ($nombre === '')          jerr('El nombre es obligatorio.');
@@ -56,49 +63,92 @@ try {
   // seguimos; la validación DB final atrapará cualquier cosa
 }
 
-$rawActivo = $_POST['activo'] ?? 0;
-function to01($v){
-  $v = strtolower(trim((string)$v));
-  return in_array($v, ['1','true','on','si','sí','yes']) ? 1 : 0;
-}
-$activo = to01($rawActivo);
-
-
 try {
   if ($id === '') {
     // INSERT
-   $sql = "INSERT INTO persona
-  (nombre, apaterno, amaterno, numero_empleado, correo, Fk_dependencia, Fk_entidad, activo)
-  VALUES (?,?,?,?,?,?,?,?)";
-$stmt = $pdo->prepare($sql);
-$stmt->bindValue(1, $nombre);
-$stmt->bindValue(2, $apaterno);
-$stmt->bindValue(3, $amaterno);
-$stmt->bindValue(4, $numero_empleado);
-$stmt->bindValue(5, $correo);
-$stmt->bindValue(6, (int)$Fk_dependencia, PDO::PARAM_INT);
-$stmt->bindValue(7, (int)$Fk_entidad, PDO::PARAM_INT);
-$stmt->bindValue(8, (int)$activo, PDO::PARAM_INT);   // <---- clave
-$ok = $stmt->execute();
+    $sql = "INSERT INTO persona
+            (nombre, apaterno, amaterno, numero_empleado, correo, Fk_dependencia, Fk_entidad, activo)
+            VALUES (?,?,?,?,?,?,?,?)";
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $nombre);
+    $stmt->bindValue(2, $apaterno);
+    $stmt->bindValue(3, $amaterno);
+    $stmt->bindValue(4, $numero_empleado);
+    $stmt->bindValue(5, $correo);
+    $stmt->bindValue(6, (int)$Fk_dependencia, PDO::PARAM_INT);
+    $stmt->bindValue(7, (int)$Fk_entidad, PDO::PARAM_INT);
+    $stmt->bindValue(8, (int)$activo, PDO::PARAM_INT);
+    $ok = $stmt->execute();
+
+    if ($ok) {
+      $new_id = $pdo->lastInsertId();
+      $usuario_session = obtenerUsuarioSession();
+      $nombre_completo = "$nombre $apaterno $amaterno";
+      $descripcion = "Nueva persona creada - nombre: '$nombre_completo', empleado: '$numero_empleado', correo: '$correo'";
+      registrarBitacora($pdo, $usuario_session, 'persona', 'persona_crear', $descripcion, $new_id);
+    }
 
   } else {
-    // UPDATE
-    $sql = "UPDATE persona SET
-  nombre=?, apaterno=?, amaterno=?, numero_empleado=?, correo=?,
-  Fk_dependencia=?, Fk_entidad=?, activo=?, fecha_modificacion=NOW()
-  WHERE ID=?";
-$stmt = $pdo->prepare($sql);
-$stmt->bindValue(1, $nombre);
-$stmt->bindValue(2, $apaterno);
-$stmt->bindValue(3, $amaterno);
-$stmt->bindValue(4, $numero_empleado);
-$stmt->bindValue(5, $correo);
-$stmt->bindValue(6, (int)$Fk_dependencia, PDO::PARAM_INT);
-$stmt->bindValue(7, (int)$Fk_entidad, PDO::PARAM_INT);
-$stmt->bindValue(8, (int)$activo, PDO::PARAM_INT);   // <---- clave
-$stmt->bindValue(9, (int)$id, PDO::PARAM_INT);
-$ok = $stmt->execute();
+    // UPDATE - Obtener datos actuales para el log de cambios
+    $stmt_prev = $pdo->prepare("SELECT nombre, apaterno, amaterno, numero_empleado, correo, Fk_dependencia, Fk_entidad, activo FROM persona WHERE ID = ?");
+    $stmt_prev->execute([(int)$id]);
+    $datos_anteriores = $stmt_prev->fetch(PDO::FETCH_ASSOC);
+    
+    if ($datos_anteriores) {
+      $sql = "UPDATE persona SET
+              nombre=?, apaterno=?, amaterno=?, numero_empleado=?, correo=?,
+              Fk_dependencia=?, Fk_entidad=?, activo=?, fecha_modificacion=NOW()
+              WHERE ID=?";
+      $stmt = $pdo->prepare($sql);
+      $stmt->bindValue(1, $nombre);
+      $stmt->bindValue(2, $apaterno);
+      $stmt->bindValue(3, $amaterno);
+      $stmt->bindValue(4, $numero_empleado);
+      $stmt->bindValue(5, $correo);
+      $stmt->bindValue(6, (int)$Fk_dependencia, PDO::PARAM_INT);
+      $stmt->bindValue(7, (int)$Fk_entidad, PDO::PARAM_INT);
+      $stmt->bindValue(8, (int)$activo, PDO::PARAM_INT);
+      $stmt->bindValue(9, (int)$id, PDO::PARAM_INT);
+      $ok = $stmt->execute();
 
+      if ($ok) {
+        // Registrar cambios en bitácora
+        $cambios = [];
+        if ($datos_anteriores['nombre'] !== $nombre) {
+          $cambios[] = "nombre: '{$datos_anteriores['nombre']}' → '$nombre'";
+        }
+        if ($datos_anteriores['apaterno'] !== $apaterno) {
+          $cambios[] = "apellido paterno: '{$datos_anteriores['apaterno']}' → '$apaterno'";
+        }
+        if ($datos_anteriores['amaterno'] !== $amaterno) {
+          $cambios[] = "apellido materno: '{$datos_anteriores['amaterno']}' → '$amaterno'";
+        }
+        if ($datos_anteriores['numero_empleado'] !== $numero_empleado) {
+          $cambios[] = "número empleado: '{$datos_anteriores['numero_empleado']}' → '$numero_empleado'";
+        }
+        if ($datos_anteriores['correo'] !== $correo) {
+          $cambios[] = "correo: '{$datos_anteriores['correo']}' → '$correo'";
+        }
+        if ($datos_anteriores['Fk_dependencia'] != $Fk_dependencia) {
+          $cambios[] = "dependencia_id: '{$datos_anteriores['Fk_dependencia']}' → '$Fk_dependencia'";
+        }
+        if ($datos_anteriores['Fk_entidad'] != $Fk_entidad) {
+          $cambios[] = "entidad_id: '{$datos_anteriores['Fk_entidad']}' → '$Fk_entidad'";
+        }
+        if ($datos_anteriores['activo'] != $activo) {
+          $estado_anterior = $datos_anteriores['activo'] ? 'Activo' : 'Inactivo';
+          $estado_nuevo = $activo ? 'Activo' : 'Inactivo';
+          $cambios[] = "estado: '$estado_anterior' → '$estado_nuevo'";
+        }
+
+        if (!empty($cambios)) {
+          $usuario_session = obtenerUsuarioSession();
+          $nombre_completo = "$nombre $apaterno $amaterno";
+          $descripcion = "Persona actualizada ($nombre_completo) - " . implode(', ', $cambios);
+          registrarBitacora($pdo, $usuario_session, 'persona', 'persona_editar', $descripcion, (int)$id);
+        }
+      }
+    }
   }
 
   echo json_encode(['ok' => (bool)$ok], JSON_UNESCAPED_UNICODE);

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Bitácora Tracker</title>
+</head>
+<body>
+    <h1>Prueba del Sistema de Bitácora</h1>
+    <div id="resultado"></div>
+    
+    <button onclick="testRegistrarVista()">Test Registrar Vista</button>
+    <button onclick="testRegistrarAccion()">Test Registrar Acción</button>
+    <button onclick="verificarContadores()">Verificar Contadores</button>
+    
+    <script>
+        // Test directo del sistema de bitácora
+        async function testRegistrarVista() {
+            const datos = {
+                vista: 'test',
+                descripcion: 'Prueba de vista de test',
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                const response = await fetch('/final/mapa/public/sections/registrar_vista_bitacora.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams(datos)
+                });
+                
+                const result = await response.text();
+                document.getElementById('resultado').innerHTML = `<h3>Respuesta Vista:</h3><pre>${result}</pre>`;
+                console.log('Respuesta vista:', result);
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `<h3>Error Vista:</h3><pre>${error}</pre>`;
+                console.error('Error:', error);
+            }
+        }
+        
+        async function testRegistrarAccion() {
+            const datos = {
+                accion: 'abrir_editar',
+                detalle: 'Test ID: 123',
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                const response = await fetch('/final/mapa/public/sections/registrar_accion_usuario.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams(datos)
+                });
+                
+                const result = await response.text();
+                document.getElementById('resultado').innerHTML = `<h3>Respuesta Acción:</h3><pre>${result}</pre>`;
+                console.log('Respuesta acción:', result);
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `<h3>Error Acción:</h3><pre>${error}</pre>`;
+                console.error('Error:', error);
+            }
+        }
+        
+        async function verificarContadores() {
+            try {
+                const response = await fetch('/final/mapa/public/sections/bitacora.php');
+                const html = await response.text();
+                
+                // Extraer los contadores del HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const accesos = doc.querySelector('.text-primary')?.textContent || 'No encontrado';
+                const interacciones = doc.querySelector('.text-info')?.textContent || 'No encontrado';
+                
+                document.getElementById('resultado').innerHTML = `
+                    <h3>Contadores Actuales:</h3>
+                    <p><strong>Accesos a Vistas:</strong> ${accesos}</p>
+                    <p><strong>Interacciones:</strong> ${interacciones}</p>
+                `;
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `<h3>Error verificando:</h3><pre>${error}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -532,6 +532,9 @@ $estatusClass = function($tx) {
 #modalDetalles .table-responsive {
   overflow-x: auto;
 }
+tbody, td, tfoot, th, thead, tr {
+    text-align: center !important;
+}
 
 </style>
 
@@ -562,7 +565,7 @@ $estatusClass = function($tx) {
                 <th>Dependencia</th>
                 <th>Fecha Inicio</th>
                 <th>Fecha Migración</th>
-                <th>Etapa</th>
+                <th>Estatus</th>
                 <th>Avance</th>
               </tr>
             </thead>
@@ -578,7 +581,7 @@ $estatusClass = function($tx) {
                     <td><?= h($row['dependencia']) ?></td>
                     <td><span class="text-body-secondary small"><?= h($row['fecha_inicio']) ?></span></td>
                     <td><span class="text-body-secondary small"><?= h($row['fecha_migracion']) ?></span></td>
-                    <td><?= h($row['etapa']) ?></td>
+                    <td><?= h($row['estado_nombre']) ?></td>
                     <td><?= (int)($row['avance'] ?? 0) ?>%</td>
                   </tr>
                 <?php endforeach ?>

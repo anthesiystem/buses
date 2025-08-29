@@ -9,9 +9,21 @@ if (!function_exists('h')) {
 
 if (!function_exists('respond_json')) {
   function respond_json(array $payload, int $status=200): void {
+    // Limpiar cualquier output previo
+    if (ob_get_level()) {
+      ob_clean();
+    }
+    
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
+    
+    // Asegurar que no hay espacios en blanco adicionales
     echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+    
+    // Forzar salida y finalizar
+    if (ob_get_level()) {
+      ob_end_flush();
+    }
     exit;
   }
 }

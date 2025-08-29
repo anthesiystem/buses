@@ -1,5 +1,7 @@
 <?php
+session_start();
 require_once '../../../server/config.php';
+require_once '../../../server/bitacora_helper.php';
 
 // JSON siempre
 header('Content-Type: application/json; charset=utf-8');
@@ -26,6 +28,17 @@ try {
     exit;
   }
 
+  // Obtener información del bus antes del cambio
+  $stmt_info = $pdo->prepare("SELECT descripcion FROM bus WHERE ID = ?");
+  $stmt_info->execute([$id]);
+  $bus_info = $stmt_info->fetch(PDO::FETCH_ASSOC);
+  
+  if (!$bus_info) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => 'Bus no encontrado']);
+    exit;
+  }
+
   // ⚠️ Evitar problemas con BIT(1): castear a UNSIGNED en SQL.
   // Alternativas que también funcionan:
   //   - "SET activo = ? + 0"
@@ -43,7 +56,22 @@ try {
     exit;
   }
 
-  echo json_encode(['success' => true, 'id' => $id, 'estado' => $estado]);
+  // Registrar en bitácora
+  $usuario_info = obtenerUsuarioSession();
+  $accion = $estado ? 'ACTIVAR' : 'DESACTIVAR';
+  $accion_texto = $estado ? 'activado' : 'desactivado';
+  $descripcion_bitacora = "Bus '" . $bus_info['descripcion'] . "' $accion_texto";
+  
+  registrarBitacora(
+    $pdo, 
+    $usuario_info['user_id'], 
+    'bus', 
+    $accion, 
+    $descripcion_bitacora, 
+    $id
+  );
+
+  echo json_encode(['success' => true, 'id' => $id, 'estado' => $estado, 'message' => "Bus $accion_texto correctamente"]);
 } catch (Throwable $e) {
   error_log('[cambiar_estado_bus] ' . $e->getMessage());
   http_response_code(500);

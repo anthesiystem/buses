@@ -192,5 +192,9 @@
   window.BUSES_PATH = 'sections/buses/'; // para fetch()
 </script>
 <script src="buses.js?v=<?=time()?>"></script>
+
+<!-- Sistema de registro de vistas en bitácora -->
+<script src="../../assets/js/bitacora_tracker.js"></script>
+
 <script> if (window.initBuses) window.initBuses(); </script>
 
