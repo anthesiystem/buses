@@ -6,6 +6,13 @@ console.log("✅ buses.js cargado");
  const BASE = () => (window.BUSES_PATH || 'sections/buses/');
 const ICONS_BASE_URL = (window.ICONS_BASE_URL || 'icons/');
 
+  // Estado de paginación
+  let currentPage = 1;
+  let perPage = 10;
+  let currentSearch = '';
+  let totalPages = 1;
+  let searchTimeout = null;
+
   function iconURL(imagen) {
     if (!imagen) return ICONS_BASE_URL + '_placeholder.png';
     const name = String(imagen).replace(/\\/g, '/').split('/').pop().trim();
@@ -27,6 +34,9 @@ window.initBuses = function initBuses() {
       form.addEventListener('submit', onSubmitFormBus);
       form.dataset.bound = '1'; // marca para no duplicar
     }
+    
+    // Inicializar eventos de paginación
+    initPaginationEvents();
     yaInicializado = true;
   }
 
@@ -34,17 +44,68 @@ window.initBuses = function initBuses() {
   cargarBuses();
 };
 
+  // Inicializar eventos de paginación y búsqueda
+  function initPaginationEvents() {
+    // Búsqueda con debounce
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          currentSearch = e.target.value.trim();
+          currentPage = 1; // Resetear a primera página al buscar
+          cargarBuses();
+        }, 300); // Esperar 300ms después de que deje de escribir
+      });
+    }
+
+    // Selector de registros por página
+    const perPageSelect = document.getElementById('perPageSelect');
+    if (perPageSelect) {
+      perPageSelect.addEventListener('change', (e) => {
+        perPage = parseInt(e.target.value);
+        currentPage = 1; // Resetear a primera página
+        cargarBuses();
+      });
+    }
+  }
+
 
   function cargarBuses() {
-    fetch(BASE() + 'buses_datos.php')
-      .then(res => res.json())
-      .then(data => {
-        console.log('📦 datos buses:', data);
+    // Construir URL con parámetros de paginación
+    const params = new URLSearchParams({
+      page: currentPage,
+      limit: perPage
+    });
+    
+    if (currentSearch) {
+      params.set('search', currentSearch);
+    }
 
-        if (!Array.isArray(data)) {
-          console.error('Los datos no son un arreglo:', data);
+    const url = BASE() + 'buses_datos.php?' + params.toString();
+    
+    fetch(url)
+      .then(res => res.json())
+      .then(response => {
+        console.log('📦 datos buses:', response);
+
+        if (!response.data || !Array.isArray(response.data)) {
+          console.error('Los datos no son válidos:', response);
           return;
         }
+
+        const data = response.data;
+        const pagination = response.pagination;
+
+        // Actualizar estado de paginación
+        currentPage = pagination.current_page;
+        totalPages = pagination.total_pages;
+
+        // Actualizar información de paginación
+        updatePaginationInfo(pagination);
+        
+        // Actualizar navegación de páginas
+        updatePaginationNav(pagination);
 
         const cuerpo = document.getElementById('tablaBuses');
         if (!cuerpo) {
@@ -53,17 +114,24 @@ window.initBuses = function initBuses() {
         }
 
         cuerpo.innerHTML = '';
+        
+        if (data.length === 0) {
+          cuerpo.innerHTML = `
+            <tr>
+              <td colspan="8" class="text-center py-4 text-muted">
+                ${currentSearch ? 'No se encontraron buses con ese criterio de búsqueda' : 'No hay buses registrados'}
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
         data.forEach(bus => {
           const src = bus.imagen_url; // viene absoluta del backend
 
             // Normaliza el color (acepta '#f59e0b' o 'f59e0b')
 
-cuerpo.innerHTML += `
-
-
-
-
-<tr>
+cuerpo.innerHTML += `<tr>
   <td class="col-id"><span class="id-chip">${bus.ID}</span></td>
   <td class="text-start"><div class="bus-name">${bus.descripcion}</div></td>
 
@@ -89,7 +157,6 @@ cuerpo.innerHTML += `
   </div>
 </td>
 
-
   <td class="col-icono">
     <span class="bus-icon">
       <img src="${src}" height="24" alt="icono"
@@ -111,18 +178,119 @@ cuerpo.innerHTML += `
   onclick="cambiarEstado(${bus.ID}, ${bus.activo == 1 ? 0 : 1})">
   ${bus.activo == 1 ? '⛔ Desactivar' : '✅ Activar'}
 </button>
-
-
     </div>
   </td>
-</tr>
-`;
+</tr>`;
         });
       })
       .catch(error => {
         console.error("Error cargando buses:", error);
+        const cuerpo = document.getElementById('tablaBuses');
+        if (cuerpo) {
+          cuerpo.innerHTML = `
+            <tr>
+              <td colspan="8" class="text-center py-4 text-danger">
+                Error al cargar los datos: ${error.message}
+              </td>
+            </tr>
+          `;
+        }
       });
   }
+
+  // Actualizar información de paginación
+  function updatePaginationInfo(pagination) {
+    const info = document.getElementById('paginationInfo');
+    if (!info) return;
+
+    const start = ((pagination.current_page - 1) * pagination.per_page) + 1;
+    const end = Math.min(start + pagination.per_page - 1, pagination.total_records);
+    
+    let text = `Mostrando ${start}-${end} de ${pagination.total_records} registros`;
+    if (pagination.search) {
+      text += ` (filtrado por "${pagination.search}")`;
+    }
+    
+    info.textContent = text;
+  }
+
+  // Actualizar navegación de páginas
+  function updatePaginationNav(pagination) {
+    const nav = document.getElementById('paginationNav');
+    if (!nav) return;
+
+    if (pagination.total_pages <= 1) {
+      nav.innerHTML = '';
+      return;
+    }
+
+    let navHTML = '';
+
+    // Botón anterior
+    navHTML += `
+      <button class="page-btn" onclick="goToPage(${pagination.current_page - 1})" 
+              ${!pagination.has_previous ? 'disabled' : ''}>
+        ← Anterior
+      </button>
+    `;
+
+    // Números de página
+    navHTML += '<div class="page-numbers">';
+    
+    const maxVisible = 5;
+    let startPage = Math.max(1, pagination.current_page - Math.floor(maxVisible / 2));
+    let endPage = Math.min(pagination.total_pages, startPage + maxVisible - 1);
+    
+    // Ajustar si estamos cerca del final
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    // Primera página si no está visible
+    if (startPage > 1) {
+      navHTML += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+      if (startPage > 2) {
+        navHTML += '<span class="page-ellipsis">...</span>';
+      }
+    }
+
+    // Páginas visibles
+    for (let i = startPage; i <= endPage; i++) {
+      navHTML += `
+        <button class="page-btn ${i === pagination.current_page ? 'active' : ''}" 
+                onclick="goToPage(${i})">
+          ${i}
+        </button>
+      `;
+    }
+
+    // Última página si no está visible
+    if (endPage < pagination.total_pages) {
+      if (endPage < pagination.total_pages - 1) {
+        navHTML += '<span class="page-ellipsis">...</span>';
+      }
+      navHTML += `<button class="page-btn" onclick="goToPage(${pagination.total_pages})">${pagination.total_pages}</button>`;
+    }
+
+    navHTML += '</div>';
+
+    // Botón siguiente
+    navHTML += `
+      <button class="page-btn" onclick="goToPage(${pagination.current_page + 1})" 
+              ${!pagination.has_next ? 'disabled' : ''}>
+        Siguiente →
+      </button>
+    `;
+
+    nav.innerHTML = navHTML;
+  }
+
+  // Navegar a una página específica
+  window.goToPage = function(page) {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    currentPage = page;
+    cargarBuses();
+  };
 
   // Abre modal para nuevo
   window.abrirModalBus = function abrirModalBus() {
@@ -153,18 +321,38 @@ cuerpo.innerHTML += `
       method: 'POST',
       body: formData
     })
-      .then(res => res.json())
+      .then(async res => {
+        // Verificar content-type para detectar errores HTML
+        const contentType = res.headers.get('content-type') || '';
+        
+        if (!contentType.includes('application/json')) {
+          const htmlResponse = await res.text();
+          console.error('Respuesta no es JSON:', htmlResponse);
+          throw new Error('El servidor devolvió una respuesta inválida (HTML en lugar de JSON)');
+        }
+        
+        if (!res.ok) {
+          throw new Error(`Error HTTP: ${res.status}`);
+        }
+        
+        return res.json();
+      })
       .then(resp => {
         if (resp.success) {
           const modalEl = document.getElementById('modalBus');
           const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
           modal.hide();
           cargarBuses();
+          // Opcional: mostrar mensaje de éxito
+          console.log('✅', resp.message);
         } else {
           alert('❌ Error: ' + (resp.message || 'No especificado'));
         }
       })
-      .catch(err => console.error('Error guardando bus:', err));
+      .catch(err => {
+        console.error('Error guardando bus:', err);
+        alert('❌ Error de conexión: ' + err.message);
+      });
   }
 
   // Cambiar estado

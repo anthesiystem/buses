@@ -82,7 +82,7 @@ if (!function_exists('tienePermiso')) {
 </button>
 
 <?php if ($esAdmin || acl_can('registro','READ')): ?>
-<button onclick="cargarSeccion('sections/regprueba.php')" class="btn-icon">
+<button onclick="cargarSeccion('sections/registros/index.php')" class="btn-icon">
   <img src="icons/reg.png" class="imgsdb" />
   <span class="icon-label">Registros</span>
 </button>

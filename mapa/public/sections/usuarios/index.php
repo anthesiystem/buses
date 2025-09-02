@@ -15,6 +15,8 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || isset($_GET['content_only'])) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <style>
     :root{
       --brand:#7b1e2b; --brand-600:#8e2433; --brand-700:#661822; --brand-rgb:123,30,43;
@@ -59,6 +61,96 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || isset($_GET['content_only'])) {
       padding-left: 12%;
       padding-top: 5%;
     }
+    
+    /* Estilos para permisos por lotes */
+    .badge-soft { 
+      background: var(--badge-bg); 
+      color: var(--ink); 
+      border: 1px solid #e5e7eb; 
+      font-weight: 600; 
+    }
+    
+    .form-check-input:checked {
+      background-color: var(--brand);
+      border-color: var(--brand);
+    }
+    
+    .modal-lg .modal-body {
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    
+    .switch-toggle {
+      width: 38px;
+      height: 20px;
+    }
+    
+    #entidadesContainer, #busesContainer {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    
+    .combo-badge {
+      font-size: 9px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .combo-badge:hover {
+      transform: scale(1.05);
+    }
+    
+    /* Mejoras para el modal de lotes */
+    .modal-xl {
+      max-width: 95%;
+    }
+    
+    .form-check-input-lg {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+    
+    .card {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border: 1px solid #e0e6ed;
+    }
+    
+    .card-header {
+      border-bottom: 2px solid #e0e6ed;
+    }
+    
+    .form-select-lg, .form-control-lg {
+      padding: 0.75rem 1rem;
+      font-size: 1.1rem;
+    }
+    
+    .border-primary {
+      border-color: var(--brand) !important;
+    }
+    
+    .border-success {
+      border-color: #198754 !important;
+    }
+    
+    .text-primary {
+      color: var(--brand) !important;
+    }
+    
+    .bg-primary {
+      background-color: var(--brand) !important;
+    }
+    
+    /* Estilos para paginación */
+    .btn-outline-secondary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    .btn-outline-secondary:hover:not(:disabled) {
+      background-color: var(--brand);
+      border-color: var(--brand);
+      color: white;
+    }
   </style>
 </head>
 <body class="bg-light">
@@ -75,6 +167,11 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || isset($_GET['content_only'])) {
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="tab-permisos" data-bs-toggle="tab" data-bs-target="#pane-permisos" type="button" role="tab">Permisos</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-lotes" data-bs-toggle="tab" data-bs-target="#pane-lotes" type="button" role="tab">
+        <i class="fas fa-layer-group me-1"></i>Permisos por Lotes
+      </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="tab-modulos" data-bs-toggle="tab" data-bs-target="#pane-modulos" type="button" role="tab">Módulos</button>
@@ -109,6 +206,20 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || isset($_GET['content_only'])) {
             <tbody id="tbPersonas"></tbody>
           </table>
         </div>
+        
+        <!-- Paginación -->
+        <div id="paginacionPersonas" class="d-flex align-items-center justify-content-between gap-2 p-3 border-top">
+          <div>
+            <span id="rangeInfoPersonas" class="small text-muted">Mostrando 0–0 de 0</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button id="btnFirstPersonas" class="btn btn-outline-secondary btn-sm" title="Primera">&laquo;</button>
+            <button id="btnPrevPersonas"  class="btn btn-outline-secondary btn-sm" title="Anterior">&lsaquo;</button>
+            <span id="pageInfoPersonas" class="small text-muted mx-3">Página 1 / 1</span>
+            <button id="btnNextPersonas"  class="btn btn-outline-secondary btn-sm" title="Siguiente">&rsaquo;</button>
+            <button id="btnLastPersonas"  class="btn btn-outline-secondary btn-sm" title="Última">&raquo;</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -136,6 +247,20 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || isset($_GET['content_only'])) {
             </thead>
             <tbody id="tbUsuarios"></tbody>
           </table>
+        </div>
+        
+        <!-- Paginación -->
+        <div id="paginacionUsuarios" class="d-flex align-items-center justify-content-between gap-2 p-3 border-top">
+          <div>
+            <span id="rangeInfoUsuarios" class="small text-muted">Mostrando 0–0 de 0</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button id="btnFirstUsuarios" class="btn btn-outline-secondary btn-sm" title="Primera">&laquo;</button>
+            <button id="btnPrevUsuarios"  class="btn btn-outline-secondary btn-sm" title="Anterior">&lsaquo;</button>
+            <span id="pageInfoUsuarios" class="small text-muted mx-3">Página 1 / 1</span>
+            <button id="btnNextUsuarios"  class="btn btn-outline-secondary btn-sm" title="Siguiente">&rsaquo;</button>
+            <button id="btnLastUsuarios"  class="btn btn-outline-secondary btn-sm" title="Última">&raquo;</button>
+          </div>
         </div>
       </div>
     </div>
@@ -183,6 +308,112 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || isset($_GET['content_only'])) {
             <tbody id="tbPermisos"></tbody>
           </table>
         </div>
+        
+        <!-- Paginación -->
+        <div id="paginacionPermisos" class="d-flex align-items-center justify-content-between gap-2 p-3 border-top">
+          <div>
+            <span id="rangeInfoPermisos" class="small text-muted">Mostrando 0–0 de 0</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button id="btnFirstPermisos" class="btn btn-outline-secondary btn-sm" title="Primera">&laquo;</button>
+            <button id="btnPrevPermisos"  class="btn btn-outline-secondary btn-sm" title="Anterior">&lsaquo;</button>
+            <span id="pageInfoPermisos" class="small text-muted mx-3">Página 1 / 1</span>
+            <button id="btnNextPermisos"  class="btn btn-outline-secondary btn-sm" title="Siguiente">&rsaquo;</button>
+            <button id="btnLastPermisos"  class="btn btn-outline-secondary btn-sm" title="Última">&raquo;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERMISOS POR LOTES -->
+    <div class="tab-pane fade" id="pane-lotes" role="tabpanel">
+      <!-- Filtros -->
+      <div class="row g-2 mb-3">
+        <div class="col-md-3">
+          <label class="form-label">👤 Usuario</label>
+          <select id="filtroUsuarioLote" class="form-select">
+            <option value="">Todos los usuarios</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">📋 Módulo</label>
+          <select id="filtroModuloLote" class="form-select">
+            <option value="">Todos los módulos</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">🏢 Entidad</label>
+          <select id="filtroEntidadLote" class="form-select">
+            <option value="">Todas las entidades</option>
+            <option value="ALL">Solo "Todas"</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">🚌 Bus</label>
+          <select id="filtroBusLote" class="form-select">
+            <option value="">Todos los buses</option>
+            <option value="ALL">Solo "Todos"</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Barra de herramientas -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="input-group" style="max-width:400px;">
+          <span class="input-group-text">🔍</span>
+          <input type="text" class="form-control" id="buscarLote" placeholder="Buscar usuario, módulo, entidad o bus...">
+        </div>
+        <button class="btn btn-primary" onclick="abrirModalLote()">
+          <i class="fas fa-plus me-1"></i>Nuevo lote de permisos
+        </button>
+      </div>
+
+      <!-- Tabla de lotes -->
+      <div class="table-card">
+        <div class="table-responsive">
+          <table class="table table-hover table-brand align-middle m-0">
+            <thead>
+              <tr>
+                <th>👤 Usuario</th>
+                <th>📋 Módulo</th>
+                <th>⚡ Acción</th>
+                <th>📊 Estado</th>
+                <th class="col-sm-hide">🔗 Combinaciones</th>
+                <th class="col-sm-hide">🏷️ Token</th>
+                <th>⚙️ Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbLotes">
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                  Cargando grupos de permisos...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Paginación -->
+        <div id="paginacionLotes" class="d-flex align-items-center justify-content-between gap-2 p-3 border-top">
+          <div>
+            <span id="rangeInfoLotes" class="small text-muted">Mostrando 0–0 de 0</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button id="btnFirstLotes" class="btn btn-outline-secondary btn-sm" title="Primera">&laquo;</button>
+            <button id="btnPrevLotes"  class="btn btn-outline-secondary btn-sm" title="Anterior">&lsaquo;</button>
+            <span id="pageInfoLotes" class="small text-muted mx-3">Página 1 / 1</span>
+            <button id="btnNextLotes"  class="btn btn-outline-secondary btn-sm" title="Siguiente">&rsaquo;</button>
+            <button id="btnLastLotes"  class="btn btn-outline-secondary btn-sm" title="Última">&raquo;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado vacío -->
+      <div id="estadoVacioLotes" class="text-center py-5" style="display:none;">
+        <div class="mb-3" style="font-size:3rem;">📝</div>
+        <h5 class="text-muted">Aún no hay grupos de permisos</h5>
+        <p class="text-muted">Crea el primero con "Nuevo lote de permisos"</p>
       </div>
     </div>
   </div>
@@ -211,6 +442,20 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || isset($_GET['content_only'])) {
         </thead>
         <tbody id="tbModulos"></tbody>
       </table>
+    </div>
+    
+    <!-- Paginación -->
+    <div id="paginacionModulos" class="d-flex align-items-center justify-content-between gap-2 p-3 border-top">
+      <div>
+        <span id="rangeInfoModulos" class="small text-muted">Mostrando 0–0 de 0</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button id="btnFirstModulos" class="btn btn-outline-secondary btn-sm" title="Primera">&laquo;</button>
+        <button id="btnPrevModulos"  class="btn btn-outline-secondary btn-sm" title="Anterior">&lsaquo;</button>
+        <span id="pageInfoModulos" class="small text-muted mx-3">Página 1 / 1</span>
+        <button id="btnNextModulos"  class="btn btn-outline-secondary btn-sm" title="Siguiente">&rsaquo;</button>
+        <button id="btnLastModulos"  class="btn btn-outline-secondary btn-sm" title="Última">&raquo;</button>
+      </div>
     </div>
   </div>
 </div>
@@ -349,13 +594,239 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || isset($_GET['content_only'])) {
   </div>
 </div>
 
+<!-- Modal LOTES DE PERMISOS -->
+<div class="modal fade" id="modalLote" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <form id="formLote">
+        <div class="modal-header bg-primary text-white">
+          <h4 class="modal-title d-flex align-items-center" id="tituloLote">
+            <i class="fas fa-layer-group me-2"></i>
+            <span>✨ Nuevo lote de permisos</span>
+          </h4>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+          <input type="hidden" name="action" id="loteAction" value="crear">
+          <input type="hidden" name="group_token" id="loteToken">
+          
+          <!-- Información básica -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="card-title mb-0">
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                Información básica del lote
+              </h6>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-lg-3 col-md-6">
+                  <label class="form-label fw-bold">
+                    <i class="fas fa-user text-primary me-1"></i>
+                    Usuario *
+                  </label>
+                  <select class="form-select form-select-lg" name="Fk_usuario" id="loteUsuario" required>
+                    <option value="">👤 Seleccionar usuario</option>
+                  </select>
+                  <small class="text-muted">Usuario al que se aplicarán los permisos</small>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                  <label class="form-label fw-bold">
+                    <i class="fas fa-puzzle-piece text-success me-1"></i>
+                    Módulo *
+                  </label>
+                  <select class="form-select form-select-lg" name="Fk_modulo" id="loteModulo" required>
+                    <option value="">📋 Seleccionar módulo</option>
+                  </select>
+                  <small class="text-muted">Sistema o módulo de la aplicación</small>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                  <label class="form-label fw-bold">
+                    <i class="fas fa-bolt text-warning me-1"></i>
+                    Acción
+                  </label>
+                  <select class="form-select form-select-lg" name="accion" id="loteAccion">
+                    <option value="">🔧 General</option>
+                    <option value="READ">👁️ Leer</option>
+                    <option value="CREATE">➕ Crear</option>
+                    <option value="UPDATE">✏️ Actualizar</option>
+                    <option value="DELETE">🗑️ Eliminar</option>
+                    <option value="EXPORT">📤 Exportar</option>
+                    <option value="COMMENT">💬 Comentar</option>
+                  </select>
+                  <small class="text-muted">Tipo de acción permitida</small>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                  <label class="form-label fw-bold">
+                    <i class="fas fa-toggle-on text-info me-1"></i>
+                    Estado inicial
+                  </label>
+                  <select class="form-select form-select-lg" name="activo" id="loteActivo">
+                    <option value="1">✅ Activo</option>
+                    <option value="0">❌ Inactivo</option>
+                  </select>
+                  <small class="text-muted">Estado por defecto del lote</small>
+                </div>
+              </div>
+              
+              <div class="row g-3 mt-2">
+                <div class="col-12">
+                  <label class="form-label fw-bold">
+                    <i class="fas fa-tag text-secondary me-1"></i>
+                    Token de grupo
+                  </label>
+                  <input type="text" class="form-control form-control-lg bg-light" id="loteTokenDisplay" readonly placeholder="🏷️ Se generará automáticamente al guardar">
+                  <small class="text-muted">Identificador único del grupo de permisos</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Selección de alcance -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="card-title mb-0">
+                <i class="fas fa-sitemap text-primary me-2"></i>
+                Alcance de aplicación
+              </h6>
+            </div>
+            <div class="card-body">
+              <div class="row g-4">
+                <!-- Entidades -->
+                <div class="col-lg-6">
+                  <div class="border border-2 border-primary rounded-3 p-4 h-100">
+                    <div class="d-flex align-items-center mb-3">
+                      <i class="fas fa-building text-primary me-2" style="font-size: 1.2rem;"></i>
+                      <h6 class="mb-0 fw-bold">Entidades *</h6>
+                    </div>
+                    
+                    <div class="form-check mb-3 p-3 bg-light rounded">
+                      <input class="form-check-input form-check-input-lg" type="checkbox" value="ALL" id="entidadAll">
+                      <label class="form-check-label fw-bold fs-5" for="entidadAll">
+                        <i class="fas fa-globe text-success me-2"></i>
+                        Todas las entidades
+                      </label>
+                      <div class="text-muted small mt-1">Aplicar permisos a todas las entidades existentes y futuras</div>
+                    </div>
+                    
+                    <div class="border-top pt-3">
+                      <label class="fw-semibold text-muted mb-2">
+                        <i class="fas fa-list me-1"></i>
+                        O seleccionar entidades específicas:
+                      </label>
+                      <div id="entidadesEspecificas" style="max-height: 200px; overflow-y: auto;" class="border rounded p-2 bg-white">
+                        <!-- Se cargarán dinámicamente -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Buses -->
+                <div class="col-lg-6">
+                  <div class="border border-2 border-success rounded-3 p-4 h-100">
+                    <div class="d-flex align-items-center mb-3">
+                      <i class="fas fa-bus text-success me-2" style="font-size: 1.2rem;"></i>
+                      <h6 class="mb-0 fw-bold">Buses *</h6>
+                    </div>
+                    
+                    <div class="form-check mb-3 p-3 bg-light rounded">
+                      <input class="form-check-input form-check-input-lg" type="checkbox" value="ALL" id="busAll">
+                      <label class="form-check-label fw-bold fs-5" for="busAll">
+                        <i class="fas fa-globe text-success me-2"></i>
+                        Todos los buses
+                      </label>
+                      <div class="text-muted small mt-1">Aplicar permisos a todos los buses existentes y futuros</div>
+                    </div>
+                    
+                    <div class="border-top pt-3">
+                      <label class="fw-semibold text-muted mb-2">
+                        <i class="fas fa-list me-1"></i>
+                        O seleccionar buses específicos:
+                      </label>
+                      <div id="busesEspecificos" style="max-height: 200px; overflow-y: auto;" class="border rounded p-2 bg-white">
+                        <!-- Se cargarán dinámicamente -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Matriz de combinaciones (solo visible cuando se seleccionan específicos) -->
+          <div id="matrizContainer" style="display:none;">
+            <div class="card">
+              <div class="card-header bg-warning bg-opacity-10">
+                <h6 class="card-title mb-0">
+                  <i class="fas fa-th text-warning me-2"></i>
+                  Matriz de combinaciones específicas
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="alert alert-info d-flex align-items-center mb-3">
+                  <i class="fas fa-info-circle me-2"></i>
+                  <div>
+                    <strong>Configuración avanzada:</strong> Puedes activar o desactivar permisos específicos para cada combinación Entidad × Bus.
+                    Los switches en verde indican permisos activos.
+                  </div>
+                </div>
+                
+                <div class="table-responsive" style="max-height:400px; border: 1px solid #dee2e6; border-radius: 0.5rem;">
+                  <table class="table table-hover table-striped mb-0">
+                    <thead class="table-dark sticky-top">
+                      <tr>
+                        <th class="text-center" style="width: 35%;">
+                          <i class="fas fa-building me-1"></i>
+                          Entidad
+                        </th>
+                        <th class="text-center" style="width: 35%;">
+                          <i class="fas fa-bus me-1"></i>
+                          Bus
+                        </th>
+                        <th class="text-center" style="width: 30%;">
+                          <i class="fas fa-toggle-on me-1"></i>
+                          Estado del Permiso
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="matrizCombinaciones">
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer bg-light d-flex justify-content-between">
+          <div>
+            <button type="button" class="btn btn-outline-danger" id="btnEliminarLote" style="display:none;" onclick="eliminarLote()">
+              <i class="fas fa-trash me-2"></i>Eliminar lote completo
+            </button>
+          </div>
+          <div>
+            <button type="button" class="btn btn-secondary btn-lg me-2" data-bs-dismiss="modal">
+              <i class="fas fa-times me-2"></i>Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="fas fa-save me-2"></i>Guardar lote de permisos
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-
 <!-- Módulo JS externo -->
 <script src="<?= dirname($_SERVER['PHP_SELF']) ?>/usuarios.js?v=<?= time() ?>"></script>
+
+<!-- Sistema de paginación -->
+<script src="<?= dirname($_SERVER['PHP_SELF']) ?>/pagination_usuarios.js?v=<?= time() ?>"></script>
 
 <!-- Sistema de registro de vistas en bitácora -->
 <script src="../../assets/js/bitacora_tracker.js"></script>

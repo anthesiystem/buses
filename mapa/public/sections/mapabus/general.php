@@ -293,8 +293,8 @@ $permisos = [
       margin: 0 !important;
       padding: 15px !important;
     }
-    #main-content {
-    padding-top: 5%;
+ #main-content {
+    padding-top: 5%;   
 }
   </style>
   <base href="/final/mapa/public/">

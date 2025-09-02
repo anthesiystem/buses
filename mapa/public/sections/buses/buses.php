@@ -146,14 +146,130 @@
 .tbl-wrap.compact .btn-soft{
   padding: .3rem .5rem; border-radius: .55rem; font-size: .82rem;
 }
-.tbl-wrap.compact .acciones{ gap: .35rem; }
+  .tbl-wrap.compact .acciones{ gap: .35rem; }
 
     #main-content {
     max-width: 90%;
     padding-left: 12%;
     padding-top: 1%;}
 
-</style>
+/* Estilos para controles de paginación */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.search-box {
+  flex: 1;
+  min-width: 250px;
+  max-width: 400px;
+}
+
+.search-box input {
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.per-page-selector select {
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.pagination-nav {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pagination-nav .btn {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 6px;
+}
+
+.pagination-nav .page-numbers {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.pagination-nav .page-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-nav .page-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.pagination-nav .page-btn.active {
+  background: #941414ff;
+  color: white;
+  border-color: #941414ff;
+}
+
+.pagination-nav .page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-ellipsis {
+  padding: 0.375rem 0.75rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .pagination-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .pagination-info {
+    justify-content: center;
+    order: 3;
+  }
+  
+  .pagination-nav {
+    justify-content: center;
+    order: 2;
+  }
+  
+  .search-box {
+    max-width: none;
+    order: 1;
+  }
+  
+  .page-numbers {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}</style>
 
 <script>
   // Asegura “#” y valor por defecto
@@ -167,7 +283,34 @@
 
 <div class="container mt-4" style="margin-top: 4.5rem !important;">
   <h4 class="mb-3">Administración de Buses</h4>
-  <button class="btn btn-brand" onclick="abrirModalBus()">➕ Agregar Bus</button>
+  
+  <!-- Controles de paginación y búsqueda -->
+  <div class="pagination-controls">
+    <div class="search-box">
+      <input type="text" id="searchInput" class="form-control" placeholder="Buscar buses..." autocomplete="off">
+    </div>
+    
+    <div class="pagination-info">
+      <div class="per-page-selector">
+        <label for="perPageSelect" class="form-label me-2 mb-0">Mostrar:</label>
+        <select id="perPageSelect" class="form-select form-select-sm">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+      <span id="paginationInfo">Cargando...</span>
+    </div>
+    
+    <button class="btn btn-brand" onclick="abrirModalBus()">➕ Agregar Bus</button>
+  </div>
+
+  <!-- Navegación de páginas -->
+  <div class="pagination-nav mb-3" id="paginationNav">
+    <!-- Se llenará dinámicamente -->
+  </div>
+
 <div class="tbl-wrap compact">
   <table class="table table-rowcards align-middle text-center">
     <thead>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Guardar Bus</title>
+</head>
+<body>
+    <h3>Test de Guardado de Bus</h3>
+    
+    <form id="testForm">
+        <input type="hidden" name="ID" value="">
+        <div>
+            <label>Descripción:</label>
+            <input type="text" name="descripcion" value="Bus Test" required>
+        </div>
+        <div>
+            <label>Color Implementado:</label>
+            <input type="color" name="color_implementado" value="#ff0000">
+        </div>
+        <div>
+            <label>Color Sin Implementar:</label>
+            <input type="color" name="color_sin_implementar" value="#00ff00">
+        </div>
+        <div>
+            <label>Color Pruebas:</label>
+            <input type="color" name="pruebas" value="#0000ff">
+        </div>
+        <div>
+            <button type="button" onclick="testGuardar()">Test Guardar</button>
+            <button type="button" onclick="testEndpoint()">Test Endpoint</button>
+        </div>
+    </form>
+    
+    <div id="resultado"></div>
+
+    <script>
+        async function testGuardar() {
+            const form = document.getElementById('testForm');
+            const formData = new FormData(form);
+            
+            try {
+                const response = await fetch('guardar_bus.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const contentType = response.headers.get('content-type') || '';
+                console.log('Content-Type:', contentType);
+                
+                if (!contentType.includes('application/json')) {
+                    const htmlResponse = await response.text();
+                    console.error('Respuesta HTML:', htmlResponse);
+                    document.getElementById('resultado').innerHTML = 
+                        '<h4>Error - Respuesta no es JSON:</h4><pre>' + htmlResponse + '</pre>';
+                    return;
+                }
+                
+                const data = await response.json();
+                document.getElementById('resultado').innerHTML = 
+                    '<h4>Respuesta JSON:</h4><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('resultado').innerHTML = 
+                    '<h4>Error JS:</h4><pre>' + error.message + '</pre>';
+            }
+        }
+        
+        async function testEndpoint() {
+            try {
+                const response = await fetch('test_guardar.php', {
+                    method: 'POST',
+                    body: new FormData(document.getElementById('testForm'))
+                });
+                
+                const data = await response.json();
+                document.getElementById('resultado').innerHTML = 
+                    '<h4>Test Endpoint:</h4><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = 
+                    '<h4>Error Test Endpoint:</h4><pre>' + error.message + '</pre>';
+            }
+        }
+    </script>
+</body>
+</html>

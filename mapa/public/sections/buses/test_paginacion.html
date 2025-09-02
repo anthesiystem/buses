@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Paginación Buses</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h3>Test de Paginación - API Buses</h3>
+        
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label>Página:</label>
+                <input type="number" id="pageInput" value="1" min="1" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label>Por página:</label>
+                <select id="limitSelect" class="form-control">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label>Búsqueda:</label>
+                <input type="text" id="searchInput" placeholder="Buscar..." class="form-control">
+            </div>
+        </div>
+        
+        <button onclick="testPaginacion()" class="btn btn-primary">Probar Paginación</button>
+        
+        <div id="resultado" class="mt-4"></div>
+    </div>
+
+    <script>
+        async function testPaginacion() {
+            const page = document.getElementById('pageInput').value;
+            const limit = document.getElementById('limitSelect').value;
+            const search = document.getElementById('searchInput').value;
+            
+            const params = new URLSearchParams({
+                page: page,
+                limit: limit
+            });
+            
+            if (search) {
+                params.set('search', search);
+            }
+            
+            const url = '../buses_datos.php?' + params.toString();
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                document.getElementById('resultado').innerHTML = `
+                    <h4>Respuesta de la API:</h4>
+                    <div class="alert alert-info">
+                        <strong>URL:</strong> ${url}
+                    </div>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                document.getElementById('resultado').innerHTML = `
+                    <h4>Error:</h4>
+                    <div class="alert alert-danger">
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

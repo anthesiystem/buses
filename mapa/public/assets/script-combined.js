@@ -66,6 +66,22 @@ function cargarSeccion(ruta) {
                             console.error("❌ Error en script inline:", err);
                         }
                     });
+                    
+                    // Después de cargar todos los scripts, intentar inicializar componentes específicos
+                    setTimeout(() => {
+                        // Inicializar catálogos si existe la función
+                        if (typeof window.initCatalogos === 'function') {
+                            console.log('🔄 Inicializando catálogos desde script-combined');
+                            window.initCatalogos();
+                        }
+                        
+                        // Inicializar registros si existe la función
+                        if (typeof window.reinitRegistros === 'function') {
+                            console.log('🔄 Reinicializando registros desde script-combined');
+                            window.reinitRegistros();
+                        }
+                    }, 100);
+                    
                     return;
                 }
 

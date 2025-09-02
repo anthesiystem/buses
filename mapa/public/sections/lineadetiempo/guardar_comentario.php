@@ -1,21 +1,10 @@
 <?php
 // /mapa/public/sections/lineadetiempo/guardar_comentario.php
 declare(strict_types=1);
-
-// Iniciar output buffering para capturar cualquier output no deseado
-ob_start();
-
-// Configurar manejo de errores para evitar output HTML
-ini_set('display_errors', 0);
-error_reporting(E_ALL);
-
 session_start();
 require_once '../../../server/config.php';
 require_once '../../../server/bitacora_helper.php';
 require_once __DIR__ . '/helpers.php';
-
-// Limpiar cualquier output previo
-ob_clean();
 
 // --- cabecera JSON coherente en todos los casos ---
 header('Content-Type: application/json; charset=utf-8');
@@ -111,8 +100,7 @@ try {
   $stRC->execute([$fkRegistro, $comentarioId, $fkEtapa]);
 
   // Registrar en bitácora usando helper
-  $usuario_id = obtenerUsuarioSession();
-  $usuario_nombre = obtenerNombreUsuarioSession();
+  $usuario_info = obtenerUsuarioSession();
   $etapa_nombre = '';
   
   // Obtener nombre de la etapa para la descripción
@@ -122,7 +110,7 @@ try {
     $etapa_nombre = $qEtapa->fetchColumn() ?: '';
   }
   
-  registrarComentario($pdo, $usuario_id, $usuario_nombre, $fkRegistro, $encabezado, $etapa_nombre);
+  registrarComentario($pdo, $usuario_info['user_id'], $usuario_info['user_name'], $fkRegistro, $encabezado, $etapa_nombre);
 
   $pdo->commit();
 

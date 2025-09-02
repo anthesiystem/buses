@@ -1,424 +1,595 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Mapa · Lupa anclada (J/K/L)</title>
-<style>
-  :root{
-    --bg:#eef1f5; --panel:#fff; --ink:#1d2430; --line:#e5e7eb;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,Arial}
-  .app{display:grid;grid-template-columns:76px 1fr 420px;gap:18px;min-height:100vh;padding:18px}
-  .sidebar{background:#1a2030;border-radius:18px;color:#fff;display:flex;flex-direction:column;align-items:center;padding:14px 8px;gap:12px}
-  .sb-logo{width:42px;height:42px;border-radius:12px;background:#0e1422;display:grid;place-items:center;font-weight:700}
-  .sb-item{width:100%;display:grid;place-items:center;height:54px;border-radius:14px;color:#d8deea;opacity:.9}
-  .sb-item.active{background:#10182a;color:#fff}
-  .main{display:flex;flex-direction:column;gap:18px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 25px rgba(0,0,0,.04)}
-  .card h3{margin:0;padding:12px 16px;border-bottom:1px solid var(--line);font-size:16px}
-  .map-card{position:relative;overflow:hidden}
-  .map-stage{position:relative;height:640px;overflow:hidden;border-radius:18px;isolation:isolate}
-  .toolbar{display:flex;gap:10px;padding:10px 12px;align-items:center}
-  .tab{background:#111827;color:#e5e7eb;border:1px solid #1f2937;border-radius:12px;padding:8px 12px;cursor:pointer}
-  .tab[aria-pressed="true"]{background:#0b1220;color:#fff;border-color:#0b1220}
-  .svg-host{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden}
-  .svg-host svg{width:100%;height:100%;max-width:1020px;display:block}
+  <meta charset="utf-8" />
+  <meta name="viewport" cont    <div id="loading" class="loading" style="display:none">Cargando grupos de permisos...</div>
+    
+    <div id="table-container">
+      <table class="grupos-table">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Módulo</th>
+            <th>Acción</th>
+            <th>Estado</th>
+            <th class="combos-cell">Combinaciones</th>
+            <th>Token</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="grupos-tbody">
+        </tbody>
+      </table>
+    </div>
+    
+    <div id="empty" class="empty card" style="display:none">Aún no hay grupos. Crea el primero con "Nuevo permiso".</div>t="width=device-width, initial-scale=1" />
+  <title>Maqueta — Permisos por grupos (edición con switches por combinación)</title>
+  <style>
+    :root{
+      --bg:#0b0e13; --card:#121824; --muted:#9fb1c7; --text:#e9f0f8; --brand:#3aa0ff; --ok:#1fc77e; --warn:#ffb020; --danger:#ff5d6c; --chip:#1f2a3d;
+      --bd:#213048; --chip-bd:#2a3954; --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box;font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial}
+    body{margin:0;background:linear-gradient(180deg,#0b0e13 0%, #0e1521 100%);color:var(--text)}
+    .wrap{max-width:1180px;margin:32px auto;padding:0 20px}
+    h1{font-size:24px;margin:0 0 16px}
+    .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+    .btn{cursor:pointer;border:1px solid var(--bd);background:#172134;color:var(--text);padding:10px 14px;border-radius:10px;box-shadow:var(--shadow)}
+    .btn.brand{background:var(--brand);border-color:transparent;color:#071521;font-weight:700}
+    .btn:hover{filter:brightness(1.08)}
+    .card{background:var(--card);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--shadow)}
 
-  .legend{position:absolute;left:18px;bottom:16px;background:#ffffffcc;backdrop-filter:blur(2px);
-    border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:grid;gap:6px}
-  .leg-row{display:flex;align-items:center;gap:8px;color:#111827}
-  .sw{width:16px;height:16px;border:1px solid #9aa1ac;border-radius:3px}
-  .sw-ok{background:linear-gradient(135deg,#2e7d32,#74c476)}
-  .sw-pr{background:repeating-linear-gradient(135deg,#f9a825 0 6px,#fff 6px 12px)}
-  .sw-off{background:#d1d5db}
+    /* Tabla de grupos */
+    .grupos-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--bd);box-shadow:var(--shadow)}
+    .grupos-table thead{background:#0e1521}
+    .grupos-table th{padding:16px 12px;text-align:left;font-weight:600;color:#c7d6ea;border-bottom:1px solid var(--bd);white-space:nowrap;font-size:12px}
+    .grupos-table td{padding:12px;border-bottom:1px solid var(--bd);vertical-align:top;font-size:13px}
+    .grupos-table tbody tr{transition:background 0.2s}
+    .grupos-table tbody tr:hover{background:#0f1a2b}
+    .grupos-table tbody tr:last-child td{border-bottom:none}
 
-  .detail{display:flex;flex-direction:column;gap:18px}
-  .meta{padding:12px 16px}
-  .meta h4{margin:.25rem 0 .25rem;font-size:18px}
-  .meta p{margin:.15rem 0;color:#4b5563}
+    .actions-cell{display:flex;gap:4px;align-items:center}
+    .usuario-cell{font-weight:600;color:var(--text);min-width:120px}
+    .modulo-cell{color:var(--brand);min-width:100px}
+    .token-cell{font-family:monospace;font-size:9px;color:var(--muted);max-width:80px}
+    .stats-cell{text-align:center;min-width:60px}
+    .combos-cell{max-width:200px}
 
-  .tip{position:absolute;right:16px;top:16px;background:#0c0f14;color:#eef3ff;border:1px solid #222834;
-       padding:10px 12px;border-radius:12px;min-width:240px;display:none;z-index:6}
-  .tip h4{margin:.1rem 0;font-size:14px}
-  .tip p{margin:0;color:#cfd5df;font-size:12px}
+    @media (max-width: 1200px) {
+      .grupos-table th, .grupos-table td { padding: 8px 6px; font-size: 11px; }
+      .token-cell { display: none; }
+      .grupos-table th:nth-child(6), .grupos-table td:nth-child(6) { display: none; }
+    }
 
-  .mx path,.mx polygon,.mx rect{fill:#f3f4f6;stroke:#9aa1ac;stroke-width:.9;transition:filter .2s ease, opacity .2s ease}
+    @media (max-width: 768px) {
+      .combos-cell { display: none; }
+      .grupos-table th:nth-child(5), .grupos-table td:nth-child(5) { display: none; }
+    }
 
-  .selected{filter:url(#dropShStrong);stroke:#3f8fff;stroke-width:1.9;animation:pulseStroke 1.6s ease-in-out infinite}
-  .selected-glow{filter:url(#glowBlue)}
-  .selected-dash{fill:none;stroke:#9fd0ff;stroke-width:2.1;stroke-dasharray:8 6;animation:dashMove 1.1s linear infinite}
-  @keyframes pulseStroke{0%,100%{stroke-opacity:.35}50%{stroke-opacity:.95}}
-  @keyframes dashMove{to{stroke-dashoffset:-28}}
+    .group{padding:14px}
+    .group header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .group h3{font-size:15px;margin:0}
+    .meta{display:flex;gap:8px;flex-wrap:wrap}
+    .tag{font-size:12px;background:var(--chip);border:1px solid var(--chip-bd);color:var(--muted);padding:6px 8px;border-radius:999px}
+    .badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;font-size:12px;border:1px solid var(--bd);background:#0f1a2b}
+    .badge .dot{width:8px;height:8px;border-radius:50%}
+    .dot.on{background:var(--ok)}
+    .dot.off{background:#a23a44}
 
-  .dim{opacity:.42;filter:saturate(.6) brightness(.96)}
-  .mode-k .dim,.mode-l .dim{filter:blur(.35px) saturate(.8) brightness(.96);opacity:.36}
+    .matrix{margin-top:8px;border:1px solid var(--bd);border-radius:12px;overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px 10px;border-bottom:1px solid var(--bd);white-space:nowrap}
+    th{background:#0f1a2b;color:#c7d6ea;font-weight:600}
+    tr:last-child td{border-bottom:0}
 
-  .overlay{position:absolute;inset:0;pointer-events:none;z-index:5}
-  .focus-lens{position:absolute;inset:0}
-  .lens-svg{width:100%;height:100%}
-  .lens-clone{filter:url(#dropShStrong);transform-origin:center;transition:transform .28s ease, opacity .2s ease}
-  .lens-ring{position:absolute;display:none;border:2px dashed rgba(49,118,255,.55);border-radius:24px;box-shadow:0 8px 40px rgba(0,0,0,.1)}
-</style>
+    .empty{border:1px dashed var(--bd);padding:22px;text-align:center;color:var(--muted)}
+
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px}
+    .modal{width:min(980px,100%);background:var(--card);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+    .modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#0e1521;border-bottom:1px solid var(--bd)}
+    .modal h2{font-size:18px;margin:0}
+    .modal .body{padding:16px}
+    .modal .footer{display:flex;justify-content:flex-end;gap:10px;padding:14px 16px;border-top:1px solid var(--bd)}
+
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    label{font-size:12px;color:var(--muted)}
+    select, input[type="text"], input[type="search"], .multibox{background:#0e1521;border:1px solid var(--bd);color:var(--text);padding:10px 12px;border-radius:10px}
+    select{appearance:none}
+
+    /* Multiselect ligero (sin librerías) */
+    .multibox{position:relative}
+    .multibox .selected{display:flex;gap:6px;flex-wrap:wrap;min-height:28px}
+    .multibox .selected .chip{display:flex;align-items:center;gap:6px;background:#0f1a2b;border:1px solid #23324e;color:#c7d6ea;padding:6px 10px;border-radius:999px;font-size:12px}
+    .multibox .options{margin-top:8px;max-height:160px;overflow:auto;border:1px solid var(--bd);border-radius:10px;padding:6px;background:#0e1521}
+    .opt{display:flex;align-items:center;gap:8px;padding:6px;border-radius:8px;cursor:pointer}
+    .opt:hover{background:#122036}
+    .opt input{accent-color:var(--brand)}
+
+    .divider{height:1px;background:var(--bd);margin:12px 0}
+    .help{font-size:12px;color:var(--muted)}
+
+    /* Switch */
+    .switch{position:relative;width:42px;height:22px}
+    .switch input{display:none}
+    .slider{position:absolute;inset:0;background:#263149;border:1px solid var(--bd);border-radius:999px;transition:.2s}
+    .slider:before{content:"";position:absolute;height:18px;width:18px;left:2px;top:1px;background:#9fb1c7;border-radius:50%;transition:.2s}
+    .switch input:checked + .slider{background:#0f2a21;border-color:#1c5b49}
+    .switch input:checked + .slider:before{transform:translateX(20px);background:#7ee7b7}
+  </style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <div class="sb-logo">SB</div>
-    <div class="sb-item active" title="Tablero">🏠</div>
-    <div class="sb-item" title="Mapa">🗺️</div>
-    <div class="sb-item" title="Registros">📄</div>
-    <div class="sb-item" title="Catálogos">🗂️</div>
-    <div class="sb-item" title="Bitácora">🕓</div>
-    <div class="sb-item" title="Usuarios">👤</div>
-    <div class="sb-item" title="Buses">🚌</div>
-  </aside>
+  <div class="wrap">
+    <h1>Permisos por grupos</h1>
+    <div class="toolbar">
+      <button class="btn brand" id="btnNuevo">Nuevo permiso</button>
+      <div style="margin-left:auto"></div>
+      <input type="search" id="q" class="card" style="padding:10px 12px;border-radius:10px" placeholder="Buscar usuario, módulo, entidad o bus…"/>
+    </div>
 
-  <main class="main">
-    <div class="card map-card">
-      <div class="toolbar">
-        <button class="tab" data-mode="mode-j" aria-pressed="true">Opción J · Rectangular</button>
-        <button class="tab" data-mode="mode-k" aria-pressed="false">Opción K · Circular</button>
-        <button class="tab" data-mode="mode-l" aria-pressed="false">Opción L · Oval</button>
-      </div>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty card" style="display:none">Aún no hay grupos. Crea el primero con “Nuevo permiso”.</div>
+  </div>
 
-      <div class="map-stage mode-j" id="stage">
-        <div class="svg-host" id="svgHost"></div>
-
-        <div class="overlay">
-          <div class="focus-lens" id="focusLens" style="display:none">
-            <svg class="lens-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+  <!-- Modal Crear/Editar -->
+  <div class="modal-backdrop" id="backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <header>
+        <h2 id="modalTitle">Nuevo permiso</h2>
+        <button class="btn" id="btnClose">✕</button>
+      </header>
+      <div class="body">
+        <div class="row-3">
+          <div class="field">
+            <label>Usuario</label>
+            <select id="fUsuario"></select>
           </div>
-          <!-- Este DIV se posiciona exactamente sobre la ventana de destino (útil para depurar) -->
-          <div class="lens-ring" id="lensRing"></div>
-
-          <div class="tip" id="tip">
-            <h4 id="tipTitle">Entidad</h4>
-            <p id="tipLine">Estatus: — | Avance: —%</p>
+          <div class="field">
+            <label>Módulo</label>
+            <select id="fModulo"></select>
+          </div>
+          <div class="field">
+            <label>Acción</label>
+            <select id="fAccion"></select>
           </div>
         </div>
 
-        <div class="legend">
-          <div class="leg-row"><span class="sw sw-ok"></span> IMPLEMENTADO</div>
-          <div class="leg-row"><span class="sw sw-pr"></span> PRUEBAS</div>
-          <div class="leg-row"><span class="sw sw-off"></span> SIN IMPLEMENTAR</div>
+        <div class="row">
+          <div class="field">
+            <label>Entidades</label>
+            <div class="multibox" id="mbEnt"></div>
+            <div class="help">Selecciona varias. “Todas” anula las demás.</div>
+          </div>
+          <div class="field">
+            <label>Buses</label>
+            <div class="multibox" id="mbBus"></div>
+            <div class="help">Selecciona varios. “Todos” anula los demás.</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:8px">Matriz de permisos (activar/desactivar por combinación)<span class="help"> — Se mantiene el histórico sin borrar filas.</span></label>
+          <div class="matrix card" id="matrixBox">
+            <table id="matrix">
+              <thead><tr><th>Entidad</th><th>Bus</th><th>Activo</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div class="field">
+            <label>Activo (global del grupo)</label>
+            <select id="fActivo">
+              <option value="1">Sí</option>
+              <option value="0">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Token de grupo</label>
+            <input id="fGroup" type="text" placeholder="Se genera automáticamente" disabled />
+          </div>
         </div>
       </div>
-    </div>
-  </main>
-
-  <aside class="detail">
-    <div class="card">
-      <h3>Detalle del Estado</h3>
-      <div class="meta">
-        <h4 id="mTitle">—</h4>
-        <p id="mL1">Estatus: —</p>
-        <p id="mL2">Avance: —%</p>
+      <div class="footer">
+        <button class="btn" id="btnCancel">Cancelar</button>
+        <button class="btn brand" id="btnSave">Guardar</button>
       </div>
     </div>
-    <div class="card">
-      <h3>Registros (demo)</h3>
-      <div class="meta"><p>Integra aquí tus tablas/cards de registros.</p></div>
-    </div>
-  </aside>
-</div>
+  </div>
 
-<script>
-(async function(){
-  /* ====== CONFIG ====== */
-  const MAP_SRC = "mapa.svg";                 // tu mapa
-  const MAIN_GROUP_SELECTOR = null;           // ej: "#mx" si lo sabes
-  // Ventana de destino (cuadro rojo): porcentajes relativos al bbox del MAPA
-  // (ajusta xPct/yPct/wPct/hPct hasta que coincida con tu zona)
-  const LENS_ANCHOR = { xPct: 0.78, yPct: 0.35, wPct: 0.32, hPct: 0.34 };
-  const SCALE_MIN = 1.2, SCALE_MAX = 3.6;
+  <script>
+    // ===== Configuración y datos
+    const API_BASE = 'sections/usuarios/api/';
+    
+    // Cache de datos reales
+    let DATA = {
+      usuarios: [],
+      modulos: [],
+      acciones: [
+        {id:'READ',n:'Leer'},{id:'CREATE',n:'Crear'},{id:'UPDATE',n:'Actualizar'},
+        {id:'DELETE',n:'Eliminar'},{id:'EXPORT',n:'Exportar'},{id:'COMMENT',n:'Comentar'}
+      ],
+      entidades: [],
+      buses: []
+    };
 
-  /* ====== DOM ====== */
-  const stage   = document.getElementById('stage');
-  const host    = document.getElementById('svgHost');
-  const tip     = document.getElementById('tip');
-  const tipTitle= document.getElementById('tipTitle');
-  const tipLine = document.getElementById('tipLine');
-  const tabs    = document.querySelectorAll('.tab');
-  const focusLens = document.getElementById('focusLens');
-  const lensSvg   = focusLens.querySelector('svg');
-  const lensRing  = document.getElementById('lensRing');
-  const mTitle = document.getElementById('mTitle');
-  const mL1 = document.getElementById('mL1');
-  const mL2 = document.getElementById('mL2');
+    // ===== Carga de datos reales
+    async function loadData() {
+      try {
+        // Cargar catálogos
+        const [modulos, buses, entidades] = await Promise.all([
+          fetch(API_BASE + 'permisos_listar.php?catalogo=modulo').then(r => r.json()),
+          fetch(API_BASE + 'permisos_listar.php?catalogo=bus').then(r => r.json()),
+          fetch(API_BASE + 'entidades_listar.php').then(r => r.json())
+        ]);
 
-  tabs.forEach(b=>b.addEventListener('click',()=>{
-    tabs.forEach(x=>x.setAttribute('aria-pressed','false'));
-    b.setAttribute('aria-pressed','true');
-    stage.className = 'map-stage ' + b.dataset.mode;
-    hideLens();
-    updateDim();
-  }));
+        DATA.modulos = modulos.map(m => ({id: m.ID, n: m.descripcion}));
+        DATA.buses = [{id:'ALL',n:'Todos'}, ...buses.map(b => ({id: b.ID, n: b.descripcion}))];
+        DATA.entidades = [{id:'ALL',n:'Todas'}, ...entidades.map(e => ({id: e.ID, n: e.descripcion}))];
 
-  /* ====== Carga SVG ====== */
-  const svgText = await fetch(MAP_SRC).then(r=>r.ok?r.text():Promise.reject())
-    .catch(()=>`<svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
-      <g id="mx">
-        <path id="BCA" d="M60 60 H360 V220 H60 Z"/>
-        <path id="SON" d="M380 80 H720 V200 H380 Z"/>
-        <path id="OCC" d="M100 260 H340 V420 H100 Z"/>
-        <path id="SUR" d="M380 260 H720 V420 H380 Z"/>
-        <path id="PEN" d="M740 220 h40 v160 h-40 z"/>
-      </g>
-    </svg>`);
-  host.innerHTML = svgText;
-  const svg = host.querySelector('svg'); svg.classList.add('mx');
-  lensSvg.setAttribute('preserveAspectRatio','xMidYMid meet');
-  injectDefs(svg);
+        // Cargar usuarios de los permisos existentes
+        const permisos = await fetch(API_BASE + 'permisos_listar.php').then(r => r.json());
+        const usuariosUnicos = [...new Map(permisos.map(p => [p.Fk_usuario, {id: p.Fk_usuario, n: p.usuario}])).values()];
+        DATA.usuarios = usuariosUnicos;
 
-  // Grupo principal
-  let gMain = svg;
-  if (MAIN_GROUP_SELECTOR && svg.querySelector(MAIN_GROUP_SELECTOR)) {
-    gMain = svg.querySelector(MAIN_GROUP_SELECTOR);
-  } else {
-    gMain = detectMainGroup(svg);
-  }
+        // Cargar grupos existentes
+        const grupos = await fetch(API_BASE + 'permisos_grupos.php').then(r => r.json());
+        state.groups = grupos.map(g => ({
+          group_token: g.group_token || uuid(),
+          usuario: g.Fk_usuario,
+          modulo: g.Fk_modulo,
+          accion: g.accion,
+          activo: g.activo,
+          combos: g.combos.map(c => ({
+            e: c.FK_entidad || 'ALL',
+            b: c.FK_bus || 'ALL', 
+            active: c.activo == 1
+          }))
+        }));
 
-  tagHitAreas(gMain);
-  assignDemoData(gMain);
-
-  /* ====== Eventos ====== */
-  stage.addEventListener('mousemove', (ev)=>{
-    const t = ev.target.closest('.hit');
-    if(!t){ tip.style.display='none'; return; }
-    tip.style.display='block';
-    tip.style.right='16px'; tip.style.top='16px';
-    tipTitle.textContent = t.getAttribute('data-name')||t.id||'Entidad';
-    tipLine.textContent  = `Estatus: ${t.getAttribute('data-status')||'—'} | Avance: ${t.getAttribute('data-avance')||'—'}%`;
-  });
-
-  stage.addEventListener('click', (ev)=>{
-    const node = ev.target.closest('.hit');
-    if(!node) return;
-
-    svg.querySelectorAll('.selected').forEach(n=>n.classList.remove('selected','selected-glow'));
-    svg.querySelectorAll('.selected-dash').forEach(n=>n.remove());
-    node.classList.add('selected','selected-glow');
-
-    const dash = document.createElementNS('http://www.w3.org/2000/svg', node.tagName);
-    copyGeometry(node, dash);
-    dash.classList.add('selected-dash');
-    gMain.appendChild(dash);
-
-    showLensPinned(node, gMain);   // ⬅️ lupa anclada a la ventana
-    updateDim();
-
-    mTitle.textContent = node.getAttribute('data-name')||node.id||'Entidad';
-    mL1.textContent = 'Estatus: ' + (node.getAttribute('data-status')||'—');
-    mL2.textContent = 'Avance: ' + (node.getAttribute('data-avance')||'—') + '%';
-  });
-
-  function updateDim(){
-    const sel = svg.querySelector('.selected');
-    gMain.querySelectorAll('.hit').forEach(el=>{
-      el.classList.remove('dim');
-      if(sel && el!==sel) el.classList.add('dim');
-    });
-  }
-
-  /* ====== Lupa ANCLADA a la ventana de destino ====== */
-  function showLensPinned(node, group){
-  const vb = svg.viewBox.baseVal;
-  focusLens.style.display='block';
-  lensSvg.innerHTML='';
-  lensSvg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.width} ${vb.height}`);
-  lensSvg.setAttribute('preserveAspectRatio','xMidYMid meet');
-
-  // BBoxes en coordenadas del SVG raíz
-  const gb = bboxInRoot(group);
-  const sb = bboxInRoot(node);
-
-  // Ventana anclada (misma que ya usas)
-  const anchor = {
-    cx: gb.x + gb.width  * LENS_ANCHOR.xPct,
-    cy: gb.y + gb.height * LENS_ANCHOR.yPct,
-    w : gb.width  * LENS_ANCHOR.wPct,
-    h : gb.height * LENS_ANCHOR.hPct
-  };
-  ensureClipDefsAt(lensSvg, anchor);
-
-  // ====== CLON NORMALIZADO SIN TRANSFORMS + CTM GLOBAL ======
-  // 1) clon profundo del estado
-  const rawClone = node.cloneNode(true);
-  // 2) eliminar cualquier transform en el árbol clonado
-  stripTransforms(rawClone);
-  // 3) wrapper que aplicará:  CTM_del_estado  +  centrado + escala hacia la ventana
-  const wrap = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  wrap.appendChild(rawClone);
-  wrap.setAttribute('class','lens-clone'); // para el filtro/sombra
-
-  // Matriz CTM del estado hacia el root (incluye todos los transforms originales)
-  const M = node.getCTM(); // a,b,c,d,e,f
-
-  // Escala para que quepa dentro de la ventana anclada
-  const maxSide = Math.max(sb.width, sb.height);
-  const scale = clamp(SCALE_MIN, SCALE_MAX, (Math.min(anchor.w, anchor.h) * 0.85) / maxSide);
-
-  // Centros en root
-  const sCX = sb.x + sb.width/2, sCY = sb.y + sb.height/2;
-  const dx  = anchor.cx - sCX,   dy  = anchor.cy - sCY;
-
-  // ⚠️ Orden correcto:  T * M  (M primero → va a la DERECHA del atributo)
-  wrap.setAttribute(
-    'transform',
-    `translate(${dx} ${dy}) translate(${sCX} ${sCY}) scale(${scale}) translate(${-sCX} ${-sCY}) ` +
-    `matrix(${M.a} ${M.b} ${M.c} ${M.d} ${M.e} ${M.f})`
-  );
-
-  // Inserta según modo (rect/circle/oval) y muestra guía si quieres
-  const mode = [...stage.classList].find(c=>c.startsWith('mode-')) || 'mode-j';
-  if(mode === 'mode-j'){
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.setAttribute('clip-path','url(#clipRectAnchor)');
-    g.appendChild(wrap);
-    lensSvg.appendChild(g);
-    placeRing(anchor);
-  }else if(mode === 'mode-k'){
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.setAttribute('clip-path','url(#clipCircleAnchor)');
-    g.appendChild(wrap);
-    lensSvg.appendChild(g);
-    placeRing(anchor,true);
-  }else{
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.setAttribute('clip-path','url(#clipOvalAnchor)');
-    g.appendChild(wrap);
-    lensSvg.appendChild(g);
-    placeRing(anchor);
-  }
-}
-
-
-  function hideLens(){
-    focusLens.style.display='none';
-    lensRing.style.display='none';
-    lensSvg.innerHTML='';
-  }
-
-  /* ====== Utilidades ====== */
-  function detectMainGroup(svg){
-    let best = svg, bestCount = 0;
-    svg.querySelectorAll('g').forEach(g=>{
-      const n = g.querySelectorAll('path,polygon,rect').length;
-      if(n > bestCount){ bestCount = n; best = g; }
-    });
-    return best;
-  }
-
-  function injectDefs(svg){
-    const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
-    defs.innerHTML = `
-      <filter id="dropShStrong" x="-40%" y="-40%" width="180%" height="180%">
-        <feDropShadow dx="0" dy="2.5" stdDeviation="3.2" flood-color="#4192ff" flood-opacity=".55"/>
-      </filter>
-      <filter id="glowBlue" x="-80%" y="-80%" width="260%" height="260%">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="b"/>
-        <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    `;
-    svg.prepend(defs);
-  }
-
-  function ensureClipDefsAt(svgEl, a){
-    // Crea/actualiza clipPaths en la posición de la ventana (anchor)
-    let defs = svgEl.querySelector('defs');
-    if(!defs){ defs = document.createElementNS('http://www.w3.org/2000/svg','defs'); svgEl.prepend(defs); }
-    defs.innerHTML = '';
-
-    // Rect redondeado
-    const clipRect = document.createElementNS('http://www.w3.org/2000/svg','clipPath');
-    clipRect.setAttribute('id','clipRectAnchor');
-    const rr = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rr.setAttribute('x', a.cx - a.w/2); rr.setAttribute('y', a.cy - a.h/2);
-    rr.setAttribute('width', a.w); rr.setAttribute('height', a.h); rr.setAttribute('rx', 24);
-    clipRect.appendChild(rr);
-
-    // Círculo
-    const clipCircle = document.createElementNS('http://www.w3.org/2000/svg','clipPath');
-    clipCircle.setAttribute('id','clipCircleAnchor');
-    const r = Math.min(a.w, a.h)/2;
-    const cc = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    cc.setAttribute('cx', a.cx); cc.setAttribute('cy', a.cy); cc.setAttribute('r', r);
-    clipCircle.appendChild(cc);
-
-    // Óvalo
-    const clipOval = document.createElementNS('http://www.w3.org/2000/svg','clipPath');
-    clipOval.setAttribute('id','clipOvalAnchor');
-    const ov = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
-    ov.setAttribute('cx', a.cx); ov.setAttribute('cy', a.cy); ov.setAttribute('rx', a.w/2); ov.setAttribute('ry', a.h/2);
-    clipOval.appendChild(ov);
-
-    defs.appendChild(clipRect);
-    defs.appendChild(clipCircle);
-    defs.appendChild(clipOval);
-  }
-
-  function placeRing(a, circle=false){
-    // Dibuja/posiciona una caja HTML sobre la ventana (solo guía visual)
-    const m = svg.getScreenCTM();
-    const pC = svg.createSVGPoint(); pC.x=a.cx; pC.y=a.cy;
-    const pR = svg.createSVGPoint(); pR.x=a.cx + a.w/2; pR.y=a.cy + a.h/2;
-    const c = pC.matrixTransform(m); const r = pR.matrixTransform(m);
-
-    const stageRect = stage.getBoundingClientRect();
-    const left = c.x - stageRect.left - (r.x-c.x);
-    const top  = c.y - stageRect.top  - (r.y-c.y);
-    const w = (r.x-c.x)*2; const h = (r.y-c.y)*2;
-
-    Object.assign(lensRing.style, {
-      left: `${left}px`, top: `${top}px`, width: `${w}px`, height: `${h}px`,
-      borderRadius: circle ? `${Math.min(w,h)/2}px` : '24px', display:'block'
-    });
-  }
-
-  function tagHitAreas(root){
-    root.querySelectorAll('path,polygon,rect').forEach(n=>{
-      n.classList.add('hit');
-      n.setAttribute('data-name', n.getAttribute('title')||n.getAttribute('data-name')||n.id||'Entidad');
-    });
-  }
-
-  function copyGeometry(src, dst){
-    for(const a of src.getAttributeNames()){
-      if(['d','points','x','y','width','height','rx','ry','transform'].includes(a)){
-        dst.setAttribute(a, src.getAttribute(a));
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        // Fallback a datos de ejemplo si hay error
+        DATA = {
+          usuarios:[{id:1,n:'Admin'},{id:2,n:'Gestor A'},{id:3,n:'Enlace Local'}],
+          modulos:[{id:1,n:'Mapa General'},{id:2,n:'Registros'},{id:3,n:'Catálogos'}],
+          acciones:[{id:'READ',n:'Leer'},{id:'CREATE',n:'Crear'},{id:'UPDATE',n:'Actualizar'},{id:'DELETE',n:'Eliminar'}],
+          entidades:[{id:'ALL',n:'Todas'},{id:1,n:'CDMX'},{id:2,n:'Jalisco'},{id:3,n:'Puebla'},{id:4,n:'Yucatán'}],
+          buses:[{id:'ALL',n:'Todos'},{id:1,n:'911'},{id:2,n:'LPR'},{id:3,n:'RNL'},{id:4,n:'CUP'}]
+        };
       }
     }
-    if(src.hasAttribute('fill')) dst.setAttribute('fill', src.getAttribute('fill'));
-    dst.setAttribute('stroke', '#3f8fff');
-  }
 
-  function clamp(min, max, v){ return Math.max(min, Math.min(max, v)); }
+    // Estado en memoria 
+    const state = { groups:[], editing:null };
 
-  function bboxInRoot(el){
-    const b = el.getBBox();
-    const m = el.getCTM();
-    const p1 = svg.createSVGPoint(); p1.x=b.x; p1.y=b.y;
-    const p2 = svg.createSVGPoint(); p2.x=b.x+b.width; p2.y=b.y;
-    const p3 = svg.createSVGPoint(); p3.x=b.x; p3.y=b.y+b.height;
-    const p4 = svg.createSVGPoint(); p4.x=b.x+b.width; p4.y=b.y+b.height;
-    const P1 = p1.matrixTransform(m), P2 = p2.matrixTransform(m),
-          P3 = p3.matrixTransform(m), P4 = p4.matrixTransform(m);
-    const xs=[P1.x,P2.x,P3.x,P4.x], ys=[P1.y,P2.y,P3.y,P4.y];
-    const minX=Math.min(...xs), maxX=Math.max(...xs);
-    const minY=Math.min(...ys), maxY=Math.max(...ys);
-    return { x:minX, y:minY, width:maxX-minX, height:maxY-minY };
-  }
+    // ===== Utilidades para notificaciones
+    function showNotification(message, type = 'success') {
+      // Crear elemento de notificación temporal
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        padding: 12px 16px; border-radius: 8px; color: white; font-weight: 500;
+        background: ${type === 'success' ? 'var(--ok)' : 'var(--danger)'};
+        transform: translateX(100%); transition: transform 0.3s;
+      `;
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      // Mostrar y auto-ocultar
+      setTimeout(() => notification.style.transform = 'translateX(0)', 100);
+      setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => document.body.removeChild(notification), 300);
+      }, 3000);
+    }
 
-  function assignDemoData(root){
-    const sts = ['IMPLEMENTADO','PRUEBAS','MIXTO','SIN'];
-    root.querySelectorAll('.hit').forEach((el,i)=>{
-      el.setAttribute('data-status', sts[i%sts.length]);
-      el.setAttribute('data-avance', [100,70,45,15][i%4]);
-    });
-  }
-})();
-</script>
+    // ===== Utilidades UI
+    const el = (sel,root=document)=>root.querySelector(sel);
+    const els = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+    const uuid = ()=>'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);});
+
+    function fillSelect(sel, arr){ sel.innerHTML = arr.map(o=>`<option value="${o.id}">${o.n}</option>`).join(''); }
+
+    function makeMultibox(container, options){
+      container.classList.add('multibox');
+      container.innerHTML = `<div class="selected"></div><div class="options"></div>`;
+      const selected = el('.selected',container);
+      const opts = el('.options',container);
+      opts.innerHTML = options.map(o=>`<div class="opt"><input type="checkbox" value="${o.id}" id="cb-${o.id}"><label for="cb-${o.id}">${o.n}</label></div>`).join('');
+
+      function refresh(){
+        const vals = values();
+        selected.innerHTML = vals.map(v=>{
+          const name = options.find(o=>o.id==v)?.n || v;
+          return `<span class=\"chip\">${name} <button data-val=\"${v}\" title=\"Quitar\" style=\"cursor:pointer;border:0;background:transparent;color:#9fb1c7\">×</button></span>`;
+        }).join('');
+        els('button',selected).forEach(b=>b.onclick = ()=>set(values().filter(x=>x!=b.dataset.val)));
+      }
+      function set(vals){
+        const onlyAll = vals.includes('ALL') ? ['ALL'] : vals.filter(v=>v!=='ALL');
+        els('input[type=checkbox]',opts).forEach(cb=>cb.checked = onlyAll.includes(cb.value));
+        refresh();
+        container.dispatchEvent(new CustomEvent('changeValues', {detail: values()}));
+      }
+      function values(){ return els('input[type=checkbox]',opts).filter(cb=>cb.checked).map(cb=>cb.value); }
+      opts.addEventListener('change',()=>set(values()));
+      set([]);
+      return { set, values, onChange:(fn)=>container.addEventListener('changeValues',e=>fn(e.detail)) };
+    }
+
+    // ===== Render de tabla de grupos
+    function render(){
+      const tbody = el('#grupos-tbody');
+      const q = el('#q').value.toLowerCase().trim();
+      let groups = state.groups;
+      if(q){
+        groups = groups.filter(g=>{
+          const u = labelById(DATA.usuarios,g.usuario);
+          const m = labelById(DATA.modulos,g.modulo);
+          const acc = labelById(DATA.acciones,g.accion);
+          const combosText = g.combos.map(c=>`${labelById(DATA.entidades,c.e)} ${labelById(DATA.buses,c.b)}`).join(' ');
+          return [u,m,acc,combosText].join(' ').toLowerCase().includes(q);
+        });
+      }
+
+      el('#empty').style.display = groups.length ? 'none':'block';
+      el('#table-container').style.display = groups.length ? 'block':'none';
+      
+      tbody.innerHTML = groups.map(g=>`
+        <tr data-group="${g.group_token}">
+          <td class="usuario-cell">
+            <strong>${labelById(DATA.usuarios,g.usuario)}</strong>
+          </td>
+          <td class="modulo-cell">📋 ${labelById(DATA.modulos,g.modulo)}</td>
+          <td>${labelById(DATA.acciones,g.accion) || '<span style="color:var(--muted)">General</span>'}</td>
+          <td class="stats-cell">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center">
+              ${summaryBadges(g).join('')}
+            </div>
+          </td>
+          <td class="combos-cell">
+            <div style="max-height:80px;overflow-y:auto;font-size:10px">
+              ${g.combos.slice(0,4).map(c=>`
+                <div style="display:inline-block;margin:1px;padding:2px 5px;background:#0f1a2b;border-radius:3px;border:1px solid ${c.active?'var(--ok)':'#a23a44'};color:${c.active?'var(--ok)':'#a23a44'};font-size:9px">
+                  ${labelById(DATA.entidades,c.e)} × ${labelById(DATA.buses,c.b)}
+                </div>
+              `).join('')}
+              ${g.combos.length > 4 ? `<div style="margin-top:2px;font-size:8px;color:var(--muted)">+${g.combos.length - 4} más</div>` : ''}
+            </div>
+          </td>
+          <td class="token-cell">${g.group_token.slice(0,8)}...</td>
+          <td class="actions-cell">
+            <button class="btn small" data-edit="${g.group_token}" title="Editar">✏️</button>
+            <button class="btn small danger" data-del="${g.group_token}" title="Eliminar">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+
+      els('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));
+      els('[data-del]').forEach(b=>b.onclick=()=>delGroup(b.dataset.del));
+    }
+
+    function summaryBadges(g){
+      // Agrupa por entidad y por bus para mostrar conteos rápidos
+      const byEnt = {};
+      g.combos.forEach(c=>{ byEnt[c.e] = byEnt[c.e]||{on:0,off:0}; c.active?byEnt[c.e].on++:byEnt[c.e].off++; });
+      const byBus = {};
+      g.combos.forEach(c=>{ byBus[c.b] = byBus[c.b]||{on:0,off:0}; c.active?byBus[c.b].on++:byBus[c.b].off++; });
+      const entBadges = Object.entries(byEnt).map(([e,v])=>`<span class=\"badge\"><span class=\"dot ${v.off? 'off':'on'}\"></span>${labelById(DATA.entidades,e)} • ${v.on}/${v.on+v.off}</span>`);
+      const busBadges = Object.entries(byBus).map(([b,v])=>`<span class=\"badge\"><span class=\"dot ${v.off? 'off':'on'}\"></span>${labelById(DATA.buses,b)} • ${v.on}/${v.on+v.off}</span>`);
+      return [...entBadges, ...busBadges];
+    }
+
+    function labelById(arr,id){ return (arr.find(x=>String(x.id)===String(id))||{}).n || id; }
+
+    // ===== Modal
+    const backdrop = el('#backdrop');
+    const fUsuario = el('#fUsuario');
+    const fModulo  = el('#fModulo');
+    const fAccion  = el('#fAccion');
+    const fActivo  = el('#fActivo');
+    const fGroup   = el('#fGroup');
+    let mbEnt, mbBus;
+
+    function openNew(){
+      state.editing = null;
+      el('#modalTitle').textContent = 'Nuevo permiso';
+      fUsuario.value = DATA.usuarios[0].id;
+      fModulo.value  = DATA.modulos[0].id;
+      fAccion.value  = DATA.acciones[0].id;
+      fActivo.value  = '1';
+      fGroup.value   = '(se generará)';
+      mbEnt.set([]); mbBus.set([]);
+      buildMatrix([]); // vacío
+      backdrop.style.display = 'flex';
+    }
+    function openEdit(token){
+      const g = state.groups.find(x=>x.group_token===token);
+      if(!g) return;
+      state.editing = token;
+      el('#modalTitle').textContent = 'Editar grupo';
+      fUsuario.value = g.usuario; fModulo.value=g.modulo; fAccion.value=g.accion; fActivo.value=String(g.activo??1);
+      fGroup.value   = g.group_token;
+      // Deriva selecciones a partir de combos
+      const ents = [...new Set(g.combos.map(c=>c.e))];
+      const buss = [...new Set(g.combos.map(c=>c.b))];
+      mbEnt.set(ents); mbBus.set(buss);
+      buildMatrix(g.combos);
+      backdrop.style.display = 'flex';
+    }
+    function closeModal(){ backdrop.style.display='none'; }
+
+    // Construye la matriz de (entidad x bus) con switches
+    function buildMatrix(existingCombos){
+      const tbody = el('#matrix tbody');
+      const ents = mbEnt.values();
+      const buss = mbBus.values();
+      const combos = [];
+      // mapa para conservar estado existente
+      const map = new Map(existingCombos.map(c=>[key(c.e,c.b), c.active]));
+      ents.forEach(e=>{
+        if(e==='ALL') return; // en maqueta ignoramos wildcard
+        buss.forEach(b=>{
+          if(b==='ALL') return;
+          const k = key(e,b);
+          const active = map.has(k) ? map.get(k) : true; // default activo
+          combos.push({e,b,active});
+        });
+      });
+      tbody.innerHTML = combos.map(c=>`
+        <tr data-e="${c.e}" data-b="${c.b}"><td>${labelById(DATA.entidades,c.e)}</td><td>${labelById(DATA.buses,c.b)}</td>
+          <td style="text-align:center"><label class="switch"><input type="checkbox" ${c.active?'checked':''}><span class="slider"></span></label></td></tr>
+      `).join('');
+      // listeners
+      els('input[type=checkbox]', tbody).forEach(chk=>{
+        chk.addEventListener('change',()=>{
+          // opcional: nada, se leerá al guardar
+        });
+      });
+    }
+
+    function key(e,b){ return `${e}::${b}`; }
+
+    function save(){
+      // Recolecta combos de la tabla + switches
+      const rows = els('#matrix tbody tr');
+      const combos = rows.map(r=>({
+        e: r.getAttribute('data-e'),
+        b: r.getAttribute('data-b'),
+        active: el('input[type=checkbox]',r).checked
+      }));
+
+      const payload = {
+        group_token: state.editing || uuid(),
+        usuario: Number(fUsuario.value),
+        modulo:  fModulo.value,
+        accion:  fAccion.value,
+        activo:  Number(fActivo.value),
+        combos
+      };
+
+      // Llamada real al API
+      saveLote(payload);
+    }
+
+    async function saveLote(payload) {
+      try {
+        const formData = new FormData();
+        formData.append('action', state.editing ? 'editar' : 'crear');
+        
+        if (state.editing) {
+          formData.append('group_token', payload.group_token);
+        }
+        
+        formData.append('Fk_usuario', payload.usuario);
+        formData.append('Fk_modulo', payload.modulo);
+        formData.append('accion', payload.accion || '');
+        formData.append('activo', payload.activo);
+        
+        // Extraer entidades y buses únicos de los combos
+        const entidades = [...new Set(payload.combos.map(c => c.e))];
+        const buses = [...new Set(payload.combos.map(c => c.b))];
+        
+        formData.append('entidades', JSON.stringify(entidades));
+        formData.append('buses', JSON.stringify(buses));
+
+        const response = await fetch(API_BASE + 'permiso_lote.php', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (result.ok) {
+          showNotification(state.editing ? 'Lote actualizado' : 'Lote creado');
+          closeModal();
+          
+          // Actualizar estado local
+          if (state.editing) {
+            const g = state.groups.find(x => x.group_token === state.editing);
+            if (g) Object.assign(g, payload);
+          } else {
+            payload.group_token = result.group_token || payload.group_token;
+            state.groups.push(payload);
+          }
+          render();
+          
+        } else {
+          showNotification(result.msg || 'Error al guardar', 'error');
+        }
+        
+      } catch (error) {
+        showNotification('Error: ' + error.message, 'error');
+      }
+    }
+
+    function delGroup(token){
+      if(!confirm('¿Eliminar todo el grupo?')) return;
+      deleteLote(token);
+    }
+
+    async function deleteLote(token) {
+      try {
+        const formData = new FormData();
+        formData.append('action', 'eliminar');
+        formData.append('group_token', token);
+
+        const response = await fetch(API_BASE + 'permiso_lote.php', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (result.ok) {
+          showNotification('Grupo eliminado correctamente');
+          state.groups = state.groups.filter(g => g.group_token !== token);
+          render();
+        } else {
+          showNotification(result.msg || 'Error al eliminar', 'error');
+        }
+        
+      } catch (error) {
+        showNotification('Error: ' + error.message, 'error');
+      }
+    }
+
+    // ===== Init
+    async function init() {
+      await loadData();
+      
+      fillSelect(fUsuario, DATA.usuarios);
+      fillSelect(fModulo, DATA.modulos);
+      fillSelect(fAccion, DATA.acciones);
+      mbEnt = makeMultibox(el('#mbEnt'), DATA.entidades);
+      mbBus = makeMultibox(el('#mbBus'), DATA.buses);
+
+      // Reconstruye matriz cuando cambian selecciones
+      mbEnt.onChange(()=>buildMatrix(readCombosFromTable()));
+      mbBus.onChange(()=>buildMatrix(readCombosFromTable()));
+
+      function readCombosFromTable(){
+        // lee estado actual de la tabla para no perder switches al cambiar selección
+        return els('#matrix tbody tr').map(r=>({ e:r.dataset.e, b:r.dataset.b, active:el('input',r).checked }));
+      }
+
+      el('#btnNuevo').onclick = openNew;
+      el('#btnClose').onclick = closeModal;
+      el('#btnCancel').onclick = closeModal;
+      el('#btnSave').onclick = save;
+      el('#q').addEventListener('input', render);
+
+      render();
+    }
+
+    // Inicializar cuando se carga la página
+    document.addEventListener('DOMContentLoaded', init);
+
+  </script>
 </body>
 </html>

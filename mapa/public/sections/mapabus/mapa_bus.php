@@ -135,6 +135,187 @@ $iconoPath           = "/final/mapa/public/icons/" . ($bus['imagen'] ?? "default
 
 <link rel="stylesheet" href="/final/mapa/public/sections/lineadetiempo/stylelineatiempo.css">
 
+<head>
+  <style>
+    /* Reset y layout principal: 70% mapa, 30% info */
+    .contenedor-mapa {
+      display: flex !important;
+      flex-direction: row !important;
+      width: 100%;
+      height: 89vh;
+      min-height: 450px;
+      gap: 15px;
+      padding: 15px;
+      margin-top: 80px; /* Espacio para header */
+      margin-left: 60px; /* Espacio para sidebar */
+      box-sizing: border-box;
+    }
+    
+    #mapa {
+      flex: 1 0 60% !important;
+      width: 70% !important;
+      background: #e1edf880;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
+    
+    #mapa svg {
+      max-width: 95%;
+      max-height: 95%;
+      width: auto;
+      height: auto;
+    }
+    
+    #info {
+      flex: 0 0 39% !important;
+      width: 30% !important;
+      background: #e1edf880;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow-y: auto;
+      height: 100%;
+      font-size: 0.8rem; /* Letra más pequeña */
+    }
+    
+    #info h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 0.8rem;
+      text-align: center;
+    }
+    
+    /* Estilos para hacer las tablas más compactas */
+    #info table {
+      font-size: 0.75rem !important;
+    }
+    
+    #info .card-estado {
+      padding: 10px !important;
+      margin-bottom: 15px !important;
+    }
+    
+    #info .estado-header {
+      gap: 8px !important;
+    }
+    
+    #info .estado-icon {
+      width: 60px !important;
+      height: 60px !important;
+      font-size: 16px !important;
+    }
+    
+    #info .estado-info h3 {
+      font-size: 1rem !important;
+      margin: 0 !important;
+    }
+    
+    #info .estado-info h5 {
+      font-size: 0.8rem !important;
+      margin: 0.2rem 0 0 !important;
+    }
+    
+    #info .estado-kv {
+      font-size: 0.8rem !important;
+      margin-top: 4px !important;
+    }
+    
+    /* Hacer tablas más compactas */
+    #info .m1c table {
+      font-size: 0.7rem !important;
+    }
+    
+    #info .m1c thead th {
+      padding: 0.4rem 0.3rem !important;
+      font-size: 0.7rem !important;
+    }
+    
+    #info .m1c tbody td {
+      padding: 0.3rem 0.3rem !important;
+      font-size: 0.7rem !important;
+    }
+    
+    #info .chip {
+      padding: 0.15rem 0.4rem !important;
+      font-size: 0.65rem !important;
+    }
+    
+    #info .badge {
+      padding: 0.2rem 0.3rem !important;
+      font-size: 0.65rem !important;
+    }
+    
+    /* Borde punteado gris simple para estado seleccionado */
+    .estado-seleccionado {
+      stroke: #0b0b0bff !important;
+      stroke-width: 1 !important;
+      stroke-dasharray: 8,4 !important;
+      stroke-dashoffset: 0;
+      animation: dashMove 2s linear infinite;
+    }
+    
+    @keyframes dashMove {
+      0% {
+        stroke-dashoffset: 0;
+      }
+      100% {
+        stroke-dashoffset: -24;
+      }
+    }
+    
+    #detalle {
+      margin-top: 1rem;
+    }
+    
+    /* Solo cambiar a vertical en móviles */
+    @media (max-width: 768px) {
+      .contenedor-mapa {
+        flex-direction: column !important;
+        height: auto !important;
+        padding: 10px;
+        gap: 10px;
+      }
+      
+      #mapa {
+        flex: none !important;
+        width: 100% !important;
+        height: 350px;
+        margin-bottom: 10px;
+      }
+      
+      #info {
+        flex: none !important;
+        width: 100% !important;
+        height: auto;
+        padding: 10px;
+      }
+      
+      .table thead { display:none; }
+      .tabla-responsive-fila{ display:block; margin-bottom:1rem; border:1px solid #ccc; border-radius:6px; padding:.5rem; }
+      .tabla-responsive-fila td{ display:flex; justify-content:space-between; padding:6px 12px; border:none; border-bottom:1px solid #ddd; }
+      .tabla-responsive-fila td::before{ content:attr(data-label); font-weight:bold; flex-basis:40%; color:#333; }
+      .tabla-responsive-fila td:last-child{ border-bottom:none; }
+    }
+    
+    /* Reset para evitar interferencias */
+    .contenedor-mapa {
+      margin: 0 !important;
+      padding: 15px !important;
+    }
+
+     #main-content {
+    padding-top: 5%;}
+  </style>
+  <base href="/final/mapa/public/">
+</head>
+
 <script>
 async function getACL(){
   const r = await fetch('../../../server/session_acl.php', {cache:'no-store'});
@@ -166,10 +347,24 @@ async function getACL(){
 
 
 <div class="contenedor-mapa">
-  <!-- SVG -->
+  <!-- SVG del mapa -->
   <div id="mapa">
     <?php echo file_get_contents("../../../public/mapa.svg"); ?>
   </div>
+
+  <!-- Panel de información lateral -->
+  <div id="info">
+    <h2 id="estadoNombre">Información del Estado</h2>
+    <div class="card-estado">
+      <div class="estado-header">
+        <div class="estado-info">
+          <!-- Información del bus seleccionado se mostrará aquí -->
+        </div>
+      </div>
+      <div id="detalle" data-estado=""></div>
+    </div>
+  </div>
+</div>
 
   <!-- Script del mapa (con datos del bus) -->
 <script>
@@ -221,37 +416,37 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 
-  <!-- Información del bus -->
-<!-- ENCABEZADO DEL PANEL (mapa_bus.php) -->
-<style>
-  .card-estado{border-radius:18px;background:;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:18px}
-  .estado-header{display:flex;align-items:center;gap:14px}
-  .estado-icon{width:86px;height:86px;border-radius:18px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:22px;overflow:hidden}
-  .estado-icon img{width:100%;height:100%;object-fit:cover}
-  .estado-info h3{font-size:22px;font-weight:800;margin:0;color:#111827;line-height:1.15}
-  .estado-info h5{font-size:15px;font-weight:700;margin:.1rem 0 0;color:#374151}
-  #detalle{margin-top:10px}
-</style>
-
-<div id="info" class="card-estado">
-  <div class="estado-header">
-
-    <div class="estado-info">
-      
-      <!-- Puedes imprimir aquí el estado seleccionado si lo tienes en variable -->
-      <!-- <h5><?= strtoupper($estado ?? '') ?></h5> -->
-    </div>
-  </div>
-  <div id="detalle"></div>
-</div>
-
-
 
 <!-- Modal global, se rellena dinámicamente -->
 <div class="modal fade" id="modalComentarios" tabindex="-1"
      data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-xl"></div>
 </div>
+
+<!-- Estilos para el Modal de Comentarios -->
+<style>
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+.modal-xl {
+  max-width: 95%;
+  margin: 1.75rem auto;
+}
+.modal-content {
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+.modal-header {
+  border-bottom: 1px solid #dee2e6;
+  background: #f8f9fa;
+}
+.modal-body {
+  padding: 1.5rem;
+}
+</style>
+
+<!-- Bootstrap Icons para el modal -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
 
 
@@ -268,36 +463,49 @@ document.addEventListener("DOMContentLoaded", function () {
 (function () {
   /** Carga/recarga del modal con el HTML generado por PHP */
 async function cargarComentariosModal(id) {
+  console.log('📝 Cargando modal para ID:', id);
+
   const modal = document.getElementById('modalComentarios');
   const dlg   = modal ? modal.querySelector('.modal-dialog') : null;
-  if (!dlg) return;
+  if (!dlg) {
+    console.error('❌ No se encontró el modal o su dialog');
+    return;
+  }
 
-  dlg.innerHTML = '<div class="modal-content"><div class="modal-body text-center p-4">Cargando...</div></div>';
+  dlg.innerHTML = '<div class="modal-content"><div class="modal-body text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></div></div>';
 
   // 🔒 Usa SIEMPRE la ruta absoluta válida a tu proyecto:
   const url = '/final/mapa/public/sections/lineadetiempo/comentarios_modal.php?id='
             + encodeURIComponent(id) + '&_=' + Date.now();
 
+  console.log('🌐 Realizando fetch a:', url);
+
   try {
     const res  = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const html = await res.text();
+    
+    console.log('📄 Longitud del HTML recibido:', html.length);
+    
+    if (html.trim().length === 0) {
+      throw new Error('La respuesta está vacía');
+    }
+    
     dlg.innerHTML = html; // Debe empezar con <div class="modal-content">…
+    console.log('✅ Modal actualizado exitosamente');
+    
     // re-inits opcionales, si los usas:
     if (window.initTimelineModal) window.initTimelineModal();
-    if (window.bootstrap) {
-      const m = bootstrap.Modal.getOrCreateInstance(modal);
-      m.show();
-    }
   } catch (e) {
-    console.error('Modal comentarios:', e);
+    console.error('❌ Error cargando modal:', e);
     dlg.innerHTML = `
       <div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title">Comentarios</h5></div>
-        <div class="modal-body">
-          <div class="alert alert-danger">
-            No se pudo cargar el modal (<code>${url}</code>).
-          </div>
+        <div class="modal-header">
+          <h5 class="modal-title">Error</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-danger">
+          Error al cargar los comentarios: ${e.message}
         </div>
       </div>`;
   }
@@ -314,32 +522,30 @@ async function cargarComentariosModal(id) {
     if (btn) { btn.disabled = true; btn.innerHTML = 'Guardando...'; }
 
     try {
-      const res  = await fetch(form.action, { method: 'POST', body: new FormData(form) });
-      let data = {};
-      try { data = await res.json(); } catch { /* ignorar */ }
-
-      const ok = !!(data && (data.success === true || data.ok === true));
-      if (!ok) {
-        alert((data && (data.message || data.msg)) || (res.ok ? 'No se pudo guardar' : `HTTP ${res.status}`));
+      const res = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        cache: 'no-store'
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      if (json.success) {
+        const registroId = form.querySelector('[name="Fk_registro"]')?.value;
+        if (registroId) {
+          await cargarComentariosModal(registroId);
+        }
+        form.reset();
         return false;
+      } else {
+        throw new Error(json.error || 'Error desconocido');
       }
-
-      const id = form.querySelector('[name="Fk_registro"]')?.value;
-      await cargarComentariosModal(id);
-
-      // Mantener abierto (por si algún CSS/JS lo cierra)
-      const modal = document.getElementById('modalComentarios');
-      if (modal && window.bootstrap) {
-        window.bootstrap.Modal.getOrCreateInstance(modal).show();
-      }
-      return false;
     } catch (err) {
-      console.error(err);
-      alert('Error de red');
+      console.error('Error guardando:', err);
+      alert('Error al guardar: ' + err.message);
       return false;
     } finally {
-      form.dataset.submitting = '0';
       if (btn) { btn.disabled = false; btn.innerHTML = original; }
+      form.dataset.submitting = '';
     }
   }
 
@@ -347,7 +553,20 @@ async function cargarComentariosModal(id) {
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-bs-target="#modalComentarios"][data-bs-id]');
     if (!btn) return;
-    await cargarComentariosModal(btn.getAttribute('data-bs-id'));
+    
+    console.log('🖱️ Click en botón modalbitacora');
+    const id = btn.getAttribute('data-bs-id');
+    console.log('📌 ID del registro:', id);
+    
+    if (id) {
+      e.preventDefault();
+      await cargarComentariosModal(id);
+      
+      // Mostrar el modal usando Bootstrap
+      const modal = document.getElementById('modalComentarios');
+      const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+      bsModal.show();
+    }
   });
 
   /** Delegación: interceptar submit dentro del modal SIEMPRE (evita navegar al JSON) */
@@ -415,6 +634,8 @@ async function cargarComentariosModal(id) {
 
   // Exporta función para reutilizarla desde otros scripts si hace falta
   window.cargarComentariosModal = cargarComentariosModal;
+  
+  console.log('✅ Script de modal inicializado completamente');
 })();
 </script>
 

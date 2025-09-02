@@ -57,14 +57,14 @@ try {
   }
 
   // Registrar en bitácora
-  $usuario_info = obtenerUsuarioSession();
+  $usuario_id = obtenerUsuarioSession();
   $accion = $estado ? 'ACTIVAR' : 'DESACTIVAR';
   $accion_texto = $estado ? 'activado' : 'desactivado';
   $descripcion_bitacora = "Bus '" . $bus_info['descripcion'] . "' $accion_texto";
   
   registrarBitacora(
     $pdo, 
-    $usuario_info['user_id'], 
+    $usuario_id, 
     'bus', 
     $accion, 
     $descripcion_bitacora, 

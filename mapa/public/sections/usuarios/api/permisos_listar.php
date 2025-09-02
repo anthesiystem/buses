@@ -17,15 +17,25 @@ $m  = $_GET['modulo']  ?? '';
 $e  = $_GET['entidad'] ?? '';
 $b  = $_GET['bus']     ?? '';
 
-$sql = "SELECT pu.ID, pu.Fk_usuario, pu.Fk_modulo, pu.FK_entidad, pu.FK_bus, pu.accion, pu.activo,
-                CAST(pu.activo AS UNSIGNED) AS activo,
-               u.cuenta AS usuario, mo.descripcion AS modulo, en.descripcion AS entidad, bu.descripcion AS bus
-        FROM permiso_usuario pu
-        JOIN usuario u ON u.ID=pu.Fk_usuario
-        JOIN modulo  mo ON mo.ID=pu.Fk_modulo
-        LEFT JOIN entidad en ON en.ID=pu.FK_entidad
-        LEFT JOIN bus     bu ON bu.ID=pu.FK_bus
-        WHERE 1";
+$sql = "SELECT 
+    pu.ID, 
+    pu.Fk_usuario, 
+    pu.Fk_modulo, 
+    pu.FK_entidad, 
+    pu.FK_bus, 
+    pu.accion, 
+    CAST(pu.activo AS UNSIGNED) AS activo,
+    u.cuenta AS usuario, 
+    mo.descripcion AS modulo, 
+    en.descripcion AS entidad, 
+    bu.descripcion AS bus
+FROM permiso_usuario pu
+JOIN usuario u ON u.ID = pu.Fk_usuario
+JOIN modulo  mo ON mo.ID = pu.Fk_modulo
+LEFT JOIN entidad en ON en.ID = pu.FK_entidad
+LEFT JOIN bus     bu ON bu.ID = pu.FK_bus
+WHERE 1";
+
 $p=[];
 
 if ($u!==''){ $sql.=" AND pu.Fk_usuario=?"; $p[]=(int)$u; }

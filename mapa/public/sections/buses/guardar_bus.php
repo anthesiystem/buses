@@ -3,16 +3,29 @@ session_start();
 require_once '../../../server/config.php';
 require_once '../../../server/bitacora_helper.php';
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+// Configurar headers JSON y manejo de errores
+header('Content-Type: application/json; charset=utf-8');
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
+// Limpiar cualquier output previo
+if (ob_get_level()) {
+    ob_clean();
+}
+
 $id          = $_POST['ID'] ?? null;
-$descripcion = $_POST['descripcion'];
-$color1      = $_POST['color_implementado'];
-$color2      = $_POST['color_sin_implementar'];
-$pruebas     = $_POST['pruebas'];
+$descripcion = trim($_POST['descripcion'] ?? '');
+$color1      = trim($_POST['color_implementado'] ?? '');
+$color2      = trim($_POST['color_sin_implementar'] ?? '');
+$pruebas     = trim($_POST['pruebas'] ?? '');
 $imagenRuta  = null;
+
+// Validaciones básicas
+if (empty($descripcion)) {
+    echo json_encode(['success' => false, 'message' => 'La descripción es requerida']);
+    exit;
+}
 
 // Ruta real en el sistema
 $carpetaDestino = '../../icons/';
@@ -39,7 +52,7 @@ if (!empty($_FILES['imagen']['name'])) {
 }
 
 try {
-  $usuario_info = obtenerUsuarioSession();
+  $usuario_id = obtenerUsuarioSession();
   $accion = $id ? 'UPDATE' : 'INSERT';
   $accion_texto = $id ? 'actualizado' : 'creado';
   
@@ -66,7 +79,7 @@ try {
   
   registrarBitacora(
     $pdo, 
-    $usuario_info['user_id'], 
+    $usuario_id, 
     'bus', 
     $accion, 
     $descripcion_bitacora, 
@@ -75,6 +88,13 @@ try {
 
   echo json_encode(['success' => true, 'message' => "Bus $accion_texto correctamente"]);
 } catch (Exception $e) {
-  error_log("Error en guardar_bus.php: " . $e->getMessage());
-  echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+  // Log del error real para debug
+  error_log("Error en guardar_bus.php: " . $e->getMessage() . " en línea " . $e->getLine());
+  
+  // Respuesta JSON limpia al cliente
+  http_response_code(500);
+  echo json_encode([
+    'success' => false, 
+    'message' => 'Error interno del servidor. Verifique los datos e intente nuevamente.'
+  ]);
 }

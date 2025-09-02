@@ -43,7 +43,7 @@ if ($filtro_tabla !== '') {
 $where_sql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
 // Paginación
-$registros_por_pagina = 50;
+$registros_por_pagina = 8;
 $pagina_actual = isset($_GET['pagina']) ? max(1, (int)$_GET['pagina']) : 1;
 $offset = ($pagina_actual - 1) * $registros_por_pagina;
 
@@ -90,11 +90,7 @@ $stats_sql = "
         SUM(CASE WHEN Tipo_Accion = 'DESCARGA' THEN 1 ELSE 0 END) as descargas,
         SUM(CASE WHEN Tipo_Accion = 'COMENTARIO' THEN 1 ELSE 0 END) as comentarios,
         SUM(CASE WHEN Tipo_Accion IN ('INSERT', 'UPDATE', 'DELETE') THEN 1 ELSE 0 END) as crud_operations,
-        SUM(CASE WHEN Tipo_Accion = 'ACCESO' THEN 1 ELSE 0 END) as accesos_vista,
-        SUM(CASE WHEN Tipo_Accion = 'INTERACCION' THEN 1 ELSE 0 END) as interacciones,
-        SUM(CASE WHEN Tipo_Accion IN ('usuario_crear', 'usuario_editar', 'usuario_reset', 'persona_crear', 'persona_editar', 'persona_toggle', 'permiso_crear', 'permiso_editar', 'permiso_toggle', 'modulo_crear', 'modulo_editar', 'modulo_toggle') THEN 1 ELSE 0 END) as operaciones_usuarios,
-        SUM(CASE WHEN DATE(Fecha_Accion) = CURDATE() THEN 1 ELSE 0 END) as hoy,
-        SUM(CASE WHEN Fecha_Accion >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as semana
+        SUM(CASE WHEN Tipo_Accion IN ('usuario_crear', 'usuario_editar', 'usuario_reset', 'persona_crear', 'persona_editar', 'persona_toggle', 'permiso_crear', 'permiso_editar', 'permiso_toggle', 'modulo_crear', 'modulo_editar', 'modulo_toggle') THEN 1 ELSE 0 END) as operaciones_usuarios
     FROM bitacora b
     INNER JOIN usuario u ON u.ID = b.Fk_Usuario
     $where_sql
@@ -195,6 +191,16 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
             table-layout: fixed !important;
             width: 100% !important;
         }
+
+        #main-content {
+            max-width: 90%;
+            padding-left: 12%;
+            padding-top: 3%;
+        }
+
+        /* Sin scroll interno en la tarjeta/tabla */
+        .table-card { max-height: none !important; overflow: visible !important; }
+        .table-responsive { overflow: visible !important; }
     </style>
 </head>
 <body class="bg-light">
@@ -203,8 +209,8 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     <h2 class="mb-4">Bitácora de Auditoría</h2>
 
     <!-- Tarjetas de estadísticas -->
-    <div class="row mb-4">
-        <div class="col-md-2">
+    <div class="row mb-4 justify-content-center">
+        <div class="col-md-2 col-sm-6 mb-3">
             <div class="card text-center border-primary">
                 <div class="card-body py-2">
                     <h5 class="card-title text-primary mb-1"><?= number_format($stats['total']) ?></h5>
@@ -212,7 +218,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                 </div>
             </div>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 col-sm-6 mb-3">
             <div class="card text-center border-info">
                 <div class="card-body py-2">
                     <h5 class="card-title text-info mb-1"><?= number_format($stats['descargas']) ?></h5>
@@ -220,7 +226,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                 </div>
             </div>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 col-sm-6 mb-3">
             <div class="card text-center border-success">
                 <div class="card-body py-2">
                     <h5 class="card-title text-success mb-1"><?= number_format($stats['comentarios']) ?></h5>
@@ -228,7 +234,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                 </div>
             </div>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 col-sm-6 mb-3">
             <div class="card text-center border-warning">
                 <div class="card-body py-2">
                     <h5 class="card-title text-warning mb-1"><?= number_format($stats['crud_operations']) ?></h5>
@@ -236,46 +242,11 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                 </div>
             </div>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 col-sm-6 mb-3">
             <div class="card text-center border-danger">
                 <div class="card-body py-2">
                     <h5 class="card-title text-danger mb-1"><?= number_format($stats['operaciones_usuarios']) ?></h5>
                     <p class="card-text small mb-0">Gestión Usuarios</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card text-center border-primary">
-                <div class="card-body py-2">
-                    <h5 class="card-title text-primary mb-1"><?= number_format($stats['accesos_vista']) ?></h5>
-                    <p class="card-text small mb-0">Accesos a Vistas</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card text-center border-info">
-                <div class="card-body py-2">
-                    <h5 class="card-title text-info mb-1"><?= number_format($stats['interacciones']) ?></h5>
-                    <p class="card-text small mb-0">Interacciones</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card text-center border-dark">
-                <div class="card-body py-2">
-                    <h5 class="card-title text-dark mb-1"><?= number_format($stats['hoy']) ?></h5>
-                    <p class="card-text small mb-0">Actividad Hoy</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card text-center border-secondary">
-                <div class="card-body py-2">
-                    <h5 class="card-title text-secondary mb-1"><?= number_format($stats['semana']) ?></h5>
-                    <p class="card-text small mb-0">Esta Semana</p>
                 </div>
             </div>
         </div>
@@ -307,8 +278,6 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                 <optgroup label="Sistema">
                     <option value="DESCARGA" <?= $filtro_accion == 'DESCARGA' ? 'selected' : '' ?>>DESCARGA PDF</option>
                     <option value="COMENTARIO" <?= $filtro_accion == 'COMENTARIO' ? 'selected' : '' ?>>COMENTARIO</option>
-                    <option value="ACCESO" <?= $filtro_accion == 'ACCESO' ? 'selected' : '' ?>>ACCESO A VISTA</option>
-                    <option value="INTERACCION" <?= $filtro_accion == 'INTERACCION' ? 'selected' : '' ?>>INTERACCIÓN</option>
                 </optgroup>
                 <optgroup label="Gestión de Usuarios">
                     <option value="usuario_crear" <?= $filtro_accion == 'usuario_crear' ? 'selected' : '' ?>>CREAR USUARIO</option>
@@ -348,22 +317,16 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
             </select>
         </div>
         <div class="col-md-12 mt-3">
-            <div class="row">
+            <div class="row justify-content-center">
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-funnel"></i> Filtrar
                     </button>
                 </div>
                 <div class="col-md-4">
-                    <a href="?" class="btn btn-outline-secondary w-100">
+                    <button type="button" class="btn btn-outline-secondary w-100" onclick="limpiarFiltros()">
                         <i class="bi bi-x-circle"></i> Limpiar Filtros
-                    </a>
-                </div>
-                <div class="col-md-4">
-                    <a href="exportar_bitacora.php?<?= http_build_query($_GET) ?>" 
-                       class="btn btn-success w-100" target="_blank">
-                        <i class="bi bi-download"></i> Exportar CSV
-                    </a>
+                    </button>
                 </div>
             </div>
         </div>
@@ -385,101 +348,72 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                 </thead>
                 <tbody>
                 <?php foreach ($result as $row): 
-                    // Determinar icono y color según el tipo de acción
+                    // Determinar icono según el tipo de acción
                     $icono = '';
-                    $colorAccion = '';
                     switch($row['Tipo_Accion']) {
                         case 'INSERT':
                             $icono = '<i class="bi bi-plus-circle-fill text-success"></i>';
-                            $colorAccion = 'table-success';
                             break;
                         case 'UPDATE':
                             $icono = '<i class="bi bi-pencil-square text-warning"></i>';
-                            $colorAccion = 'table-warning';
                             break;
                         case 'DELETE':
                             $icono = '<i class="bi bi-trash-fill text-danger"></i>';
-                            $colorAccion = 'table-danger';
                             break;
                         case 'ACTIVAR':
                             $icono = '<i class="bi bi-toggle-on text-success"></i>';
-                            $colorAccion = 'table-success';
                             break;
                         case 'DESACTIVAR':
                             $icono = '<i class="bi bi-toggle-off text-secondary"></i>';
-                            $colorAccion = 'table-secondary';
                             break;
                         case 'DESCARGA':
                             $icono = '<i class="bi bi-download text-primary"></i>';
-                            $colorAccion = 'table-primary';
                             break;
                         case 'COMENTARIO':
                             $icono = '<i class="bi bi-chat-dots-fill text-info"></i>';
-                            $colorAccion = 'table-info';
-                            break;
-                        case 'ACCESO':
-                            $icono = '<i class="bi bi-eye-fill text-primary"></i>';
-                            $colorAccion = 'table-light';
-                            break;
-                        case 'INTERACCION':
-                            $icono = '<i class="bi bi-cursor-fill text-info"></i>';
-                            $colorAccion = 'table-light';
                             break;
                         // Nuevas acciones para módulo usuarios
                         case 'usuario_crear':
                             $icono = '<i class="bi bi-person-plus-fill text-success"></i>';
-                            $colorAccion = 'table-success';
                             break;
                         case 'usuario_editar':
                             $icono = '<i class="bi bi-person-gear text-warning"></i>';
-                            $colorAccion = 'table-warning';
                             break;
                         case 'usuario_reset':
                             $icono = '<i class="bi bi-arrow-clockwise text-danger"></i>';
-                            $colorAccion = 'table-warning';
                             break;
                         case 'persona_crear':
                             $icono = '<i class="bi bi-person-add text-success"></i>';
-                            $colorAccion = 'table-success';
                             break;
                         case 'persona_editar':
                             $icono = '<i class="bi bi-person-lines-fill text-warning"></i>';
-                            $colorAccion = 'table-warning';
                             break;
                         case 'persona_toggle':
                             $icono = '<i class="bi bi-person-check text-info"></i>';
-                            $colorAccion = 'table-info';
                             break;
                         case 'permiso_crear':
                             $icono = '<i class="bi bi-shield-plus text-success"></i>';
-                            $colorAccion = 'table-success';
                             break;
                         case 'permiso_editar':
                             $icono = '<i class="bi bi-shield-fill-exclamation text-warning"></i>';
-                            $colorAccion = 'table-warning';
                             break;
                         case 'permiso_toggle':
                             $icono = '<i class="bi bi-shield-check text-info"></i>';
-                            $colorAccion = 'table-info';
                             break;
                         case 'modulo_crear':
                             $icono = '<i class="bi bi-puzzle text-success"></i>';
-                            $colorAccion = 'table-success';
                             break;
                         case 'modulo_editar':
                             $icono = '<i class="bi bi-puzzle-fill text-warning"></i>';
-                            $colorAccion = 'table-warning';
                             break;
                         case 'modulo_toggle':
                             $icono = '<i class="bi bi-toggles text-info"></i>';
-                            $colorAccion = 'table-info';
                             break;
                         default:
                             $icono = '<i class="bi bi-gear text-muted"></i>';
-                            $colorAccion = '';
                     }
                 ?>
-                <tr class="<?= $colorAccion ?>">
+                <tr>
                     <td><?= $row['ID'] ?></td>
                     <td><?= htmlspecialchars($row['Usuario']) ?></td>
                     <td><?= htmlspecialchars($row['Tabla_Afectada']) ?></td>
@@ -495,50 +429,39 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                 </tbody>
             </table>
         </div>
-    </div>    <!-- Información de paginación y controles -->
-    <div class="row mt-3">
-        <div class="col-md-6">
-            <p class="text-muted small">
-                Mostrando <?= number_format(min($offset + 1, $total_registros)) ?> - 
-                <?= number_format(min($offset + $registros_por_pagina, $total_registros)) ?> 
-                de <?= number_format($total_registros) ?> registros
-            </p>
-        </div>
-        <div class="col-md-6">
-            <?php if ($total_paginas > 1): ?>
-            <nav aria-label="Paginación de bitácora">
-                <ul class="pagination pagination-sm justify-content-end">
-                    <?php if ($pagina_actual > 1): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['pagina' => 1])) ?>">Primera</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['pagina' => $pagina_actual - 1])) ?>">Anterior</a>
-                        </li>
-                    <?php endif; ?>
-                    
-                    <?php
-                    $inicio = max(1, $pagina_actual - 2);
-                    $fin = min($total_paginas, $pagina_actual + 2);
-                    
-                    for ($i = $inicio; $i <= $fin; $i++):
-                    ?>
-                        <li class="page-item <?= $i == $pagina_actual ? 'active' : '' ?>">
-                            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['pagina' => $i])) ?>"><?= $i ?></a>
-                        </li>
-                    <?php endfor; ?>
-                    
-                    <?php if ($pagina_actual < $total_paginas): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['pagina' => $pagina_actual + 1])) ?>">Siguiente</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['pagina' => $total_paginas])) ?>">Última</a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            </nav>
-            <?php endif; ?>
+        
+        <!-- Paginación -->
+        <div id="paginacion" class="d-flex align-items-center justify-content-between gap-2 p-3 border-top">
+            <div>
+                <span id="rangeInfo" class="small text-muted">
+                    Mostrando <?= number_format(min($offset + 1, $total_registros)) ?> - 
+                    <?= number_format(min($offset + $registros_por_pagina, $total_registros)) ?> 
+                    de <?= number_format($total_registros) ?> registros
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <?php if ($pagina_actual > 1): ?>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            onclick="goToPage(1)" title="Primera">&laquo;</button>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            onclick="goToPage(<?= $pagina_actual - 1 ?>)" title="Anterior">&lsaquo;</button>
+                <?php else: ?>
+                    <button class="btn btn-outline-secondary btn-sm" disabled title="Primera">&laquo;</button>
+                    <button class="btn btn-outline-secondary btn-sm" disabled title="Anterior">&lsaquo;</button>
+                <?php endif; ?>
+                
+                <span class="small text-muted mx-3">Página <?= $pagina_actual ?> / <?= $total_paginas ?></span>
+                
+                <?php if ($pagina_actual < $total_paginas): ?>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            onclick="goToPage(<?= $pagina_actual + 1 ?>)" title="Siguiente">&rsaquo;</button>
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            onclick="goToPage(<?= $total_paginas ?>)" title="Última">&raquo;</button>
+                <?php else: ?>
+                    <button class="btn btn-outline-secondary btn-sm" disabled title="Siguiente">&rsaquo;</button>
+                    <button class="btn btn-outline-secondary btn-sm" disabled title="Última">&raquo;</button>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </div>
@@ -549,6 +472,47 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
 <script src="../assets/js/bitacora_tracker.js"></script>
 
     <script>
+        // Variables globales para paginación
+        let currentPage = <?= $pagina_actual ?>;
+        let totalPages = <?= $total_paginas ?>;
+        
+        // Función para ir a una página específica
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            
+            // Obtener parámetros actuales
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('pagina', page);
+            
+            // Construir nueva URL
+            const newUrl = window.location.pathname + '?' + urlParams.toString();
+            
+            // Si estamos en carga dinámica, usar cargarSeccion
+            if (typeof cargarSeccion === 'function') {
+                cargarSeccion('sections/bitacora.php?' + urlParams.toString());
+            } else {
+                // Fallback: recargar página
+                window.location.href = newUrl;
+            }
+        }
+        
+        // Función para limpiar filtros
+        function limpiarFiltros() {
+            // Limpiar todos los campos del formulario
+            const formFiltros = document.getElementById('filtros-bitacora');
+            if (formFiltros) {
+                formFiltros.reset();
+            }
+            
+            // Recargar la página sin parámetros
+            if (typeof cargarSeccion === 'function') {
+                cargarSeccion('sections/bitacora.php');
+            } else {
+                // Fallback: ir a la URL base sin parámetros
+                window.location.href = window.location.pathname;
+            }
+        }
+        
         // Función para inicializar cuando se carga dinámicamente
         function initBitacoraContainer() {
             console.log('Inicializando bitácora...');
@@ -574,21 +538,6 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
                         window.location.href = url;
                     }
                 });
-            }
-            
-            // Manejar enlaces de paginación
-            document.querySelectorAll('.pagination .page-link').forEach(link => {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const url = this.getAttribute('href');
-                    if (url && typeof cargarSeccion === 'function') {
-                        cargarSeccion('sections/bitacora.php' + url);
-                    }
-                });
-            });
-            
-            if (typeof initPagination === 'function') {
-                initPagination();
             }
         }
 

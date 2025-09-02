@@ -370,7 +370,7 @@ async function generarPDF_v2() {
     y += 25;
   }
 
-  doc.setFontSize(9);
+  doc.setFontSize(11);
   doc.text(fecha, pageWidth - 80, pageHeight - 30);
 
   // ░░░ NUEVA PÁGINA CON FORMATO HORIZONTAL ░░░
@@ -384,8 +384,8 @@ async function generarPDF_v2() {
 
   // Encabezados completos con texto más pequeño
   const headers = [[
-    "CATEGORÍA","BUS","MOTOR BASE","TECNOLOGÍA","VER.","DEPEND.",
-    "F.INICIO","F.MIGRAC.","ESTATUS","AVANCE"
+    "CATEGORÍA","BUS","MOTOR BASE","TECNOLOGÍA","VERSION","DEPENDENCIA",
+    "F.INICIO","F.MIGRACION","ESTATUS","AVANCE"
   ]];
 
   // Función para truncar texto si es muy largo
@@ -420,7 +420,7 @@ async function generarPDF_v2() {
     startY: 120,
     margin: { top: 80, bottom: 40, left: 15, right: 15 }, // Márgenes más pequeños
     styles: { 
-      fontSize: 6,           // Reducido de 8 a 7 para mejor balance
+      fontSize: 8,           // Reducido de 8 a 7 para mejor balance
       halign: 'center',
       valign: 'middle',
       cellPadding: 3,        // Más padding
@@ -432,21 +432,21 @@ async function generarPDF_v2() {
       fillColor: [155, 34, 71], 
       textColor: 255, 
       fontStyle: 'bold', 
-      fontSize: 5,           // Tamaño aún más pequeño para headers
+      fontSize: 8,           // Tamaño aún más pequeño para headers
       halign: 'center',
       valign: 'middle'       // Agregado para mejor alineación
     },
     columnStyles: {
-      0: { cellWidth: 70, fontSize: 6, halign: 'center' },   // CATEGORÍA - más ancho, fuente más pequeña
-      1: { cellWidth: 85, fontSize: 6, halign: 'center' },   // BUS
-      2: { cellWidth: 75, fontSize: 6, halign: 'center' },   // MOTOR BASE - más ancho
-      3: { cellWidth: 70, fontSize: 6, halign: 'center' },   // TECNOLOGÍA - más ancho
-      4: { cellWidth: 45, fontSize: 6, halign: 'center' },   // VER.
-      5: { cellWidth: 65, fontSize: 6, halign: 'center' },   // DEPEND.
-      6: { cellWidth: 60, fontSize: 6, halign: 'center' },   // F.INICIO
-      7: { cellWidth: 60, fontSize: 6, halign: 'center' },   // F.MIGRAC.
-      8: { cellWidth: 65, fontSize: 6, halign: 'center' },   // ESTATUS
-      9: { cellWidth: 50, fontSize: 6, halign: 'center' }    // AVANCE
+      0: { cellWidth: 70, fontSize: 7, halign: 'center' },   // CATEGORÍA - más ancho, fuente más pequeña
+      1: { cellWidth: 85, fontSize: 7, halign: 'center' },   // BUS
+      2: { cellWidth: 75, fontSize: 7, halign: 'center' },   // MOTOR BASE - más ancho
+      3: { cellWidth: 70, fontSize: 7, halign: 'center' },   // TECNOLOGÍA - más ancho
+      4: { cellWidth: 45, fontSize: 7, halign: 'center' },   // VER.
+      5: { cellWidth: 65, fontSize: 7, halign: 'center' },   // DEPEND.
+      6: { cellWidth: 60, fontSize: 7, halign: 'center' },   // F.INICIO
+      7: { cellWidth: 60, fontSize: 7, halign: 'center' },   // F.MIGRAC.
+      8: { cellWidth: 65, fontSize: 7, halign: 'center' },   // ESTATUS
+      9: { cellWidth: 50, fontSize: 7, halign: 'center' }    // AVANCE
     },
     alternateRowStyles: { fillColor: [245, 245, 245] },
     showHead: 'everyPage',
@@ -459,7 +459,7 @@ async function generarPDF_v2() {
     willDrawCell: function (data) {
       // Forzar tamaño de fuente pequeño en headers
       if (data.row.section === 'head') {
-        doc.setFontSize(5);  // Forzar tamaño muy pequeño para headers
+        doc.setFontSize(7);  // Forzar tamaño muy pequeño para headers
         doc.setFont('helvetica', 'bold');
       }
       
@@ -478,7 +478,7 @@ async function generarPDF_v2() {
         doc.setFont('helvetica', 'bold');
         doc.text("Resumen de Registros", doc.internal.pageSize.getWidth() / 2, 50, { align: 'center' });
         // Resetear después del título
-        doc.setFontSize(5);
+        doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
       }
     },
