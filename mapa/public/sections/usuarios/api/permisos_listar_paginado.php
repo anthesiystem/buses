@@ -2,7 +2,7 @@
 // permisos_listar_paginado.php - API para listar permisos con paginación
 header('Content-Type: application/json; charset=utf-8');
 
-require_once '../../../server/config.php';
+require_once __DIR__ . '/../../../../server/config.php';
 
 try {
     // Parámetros de paginación
@@ -44,10 +44,10 @@ try {
     
     // Contar total de registros
     $countSql = "SELECT COUNT(*) as total 
-                 FROM permisos p 
-                 LEFT JOIN usuarios u ON p.Fk_usuario = u.ID
-                 LEFT JOIN modulos m ON p.Fk_modulo = m.ID
-                 LEFT JOIN entidades e ON p.FK_entidad = e.ID
+                 FROM permiso_usuario p 
+                 LEFT JOIN usuario u ON p.Fk_usuario = u.ID
+                 LEFT JOIN modulo m ON p.Fk_modulo = m.ID
+                 LEFT JOIN entidad e ON p.FK_entidad = e.ID
                  LEFT JOIN bus b ON p.FK_bus = b.ID
                  $whereClause";
     
@@ -62,10 +62,10 @@ try {
                    m.descripcion as modulo,
                    e.descripcion as entidad,
                    b.descripcion as bus
-            FROM permisos p 
-            LEFT JOIN usuarios u ON p.Fk_usuario = u.ID
-            LEFT JOIN modulos m ON p.Fk_modulo = m.ID
-            LEFT JOIN entidades e ON p.FK_entidad = e.ID
+            FROM permiso_usuario p 
+            LEFT JOIN usuario u ON p.Fk_usuario = u.ID
+            LEFT JOIN modulo m ON p.Fk_modulo = m.ID
+            LEFT JOIN entidad e ON p.FK_entidad = e.ID
             LEFT JOIN bus b ON p.FK_bus = b.ID
             $whereClause
             ORDER BY p.ID DESC
@@ -85,13 +85,16 @@ try {
         
         $permisoJson = htmlspecialchars(json_encode($p), ENT_QUOTES, 'UTF-8');
         
+        // Convertir acción READ a Leer para mostrar
+        $accionMostrar = ($p['accion'] === 'READ' || $p['accion'] === 'READ') ? 'Leer' : ($p['accion'] ?? '');
+        
         $html .= "<tr>
             <td>{$p['ID']}</td>
             <td class=\"text-start\">" . ($p['usuario'] ?? '') . "</td>
             <td class=\"text-start\">" . ($p['modulo'] ?? '') . "</td>
             <td class=\"text-start\">" . ($p['entidad'] ?? 'Todas') . "</td>
             <td class=\"text-start\">" . ($p['bus'] ?? 'Todos') . "</td>
-            <td>" . ($p['accion'] ?? '') . "</td>
+            <td>$accionMostrar</td>
             <td class=\"$activoClass\">$activo</td>
             <td>
                 <button class=\"btn btn-sm btn-outline-primary me-1\" 

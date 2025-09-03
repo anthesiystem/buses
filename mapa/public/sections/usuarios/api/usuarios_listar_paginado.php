@@ -27,7 +27,7 @@ try {
     
     // Contar total de registros
     $countSql = "SELECT COUNT(*) as total 
-                 FROM usuarios u 
+                 FROM usuario u 
                  LEFT JOIN personas p ON u.Fk_persona = p.ID
                  $whereClause";
     
@@ -39,7 +39,7 @@ try {
     // Obtener registros con paginación
     $sql = "SELECT u.*, 
                    CONCAT(p.nombre, ' ', p.apaterno, ' ', p.amaterno) as persona
-            FROM usuarios u 
+            FROM usuario u 
             LEFT JOIN personas p ON u.Fk_persona = p.ID
             $whereClause
             ORDER BY u.ID DESC
@@ -54,6 +54,9 @@ try {
     foreach ($data as $u) {
         $activo = $u['activo'] == '1' ? 'Sí' : 'No';
         $activoClass = $u['activo'] == '1' ? 'text-success' : 'text-muted';
+        $btnToggleText = $u['activo'] == '1' ? 'Desactivar' : 'Activar';
+        $btnToggleClass = $u['activo'] == '1' ? 'btn-outline-secondary' : 'btn-outline-success';
+        $btnToggleIcon = $u['activo'] == '1' ? 'eye-slash' : 'eye';
         
         // Definir niveles de usuario
         $nivelesTexto = [
@@ -80,10 +83,15 @@ try {
                     title=\"Editar\">
                     <i class=\"fas fa-edit\"></i>
                 </button>
-                <button class=\"btn btn-sm btn-outline-warning\" 
+                <button class=\"btn btn-sm btn-outline-warning me-1\" 
                     onclick=\"resetPass({$u['ID']})\" 
                     title=\"Reset contraseña\">
                     <i class=\"fas fa-key\"></i>
+                </button>
+                <button class=\"btn btn-sm $btnToggleClass\" 
+                    onclick=\"toggleUsuario({$u['ID']})\" 
+                    title=\"$btnToggleText\">
+                    <i class=\"fas fa-$btnToggleIcon\"></i>
                 </button>
             </td>
         </tr>";

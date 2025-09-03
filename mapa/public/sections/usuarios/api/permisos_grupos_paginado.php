@@ -2,7 +2,7 @@
 // permisos_grupos_paginado.php - API para listar grupos de permisos con paginación
 header('Content-Type: application/json; charset=utf-8');
 
-require_once '../../../server/config.php';
+require_once __DIR__ . '/../../../../server/config.php';
 
 try {
     // Parámetros de paginación
@@ -172,10 +172,13 @@ try {
             $combosBadges = '<span class="text-muted">-</span>';
         }
         
+        // Convertir acción para mostrar
+        $accionMostrar = ($grupo['accion'] === 'read') ? 'Leer' : ($grupo['accion'] ?: 'General');
+        
         $html .= "<tr data-token=\"$token\">
             <td><strong>{$grupo['usuario']}</strong></td>
             <td><code>{$grupo['modulo']}</code></td>
-            <td><span class=\"badge bg-primary\">" . ($grupo['accion'] ?: 'General') . "</span></td>
+            <td><span class=\"badge bg-primary\">" . $accionMostrar . "</span></td>
             <td>$estadoBadge</td>
             <td class=\"col-sm-hide\">$combosBadges</td>
             <td class=\"col-sm-hide\"><small class=\"text-muted\">" . substr($token, 0, 8) . "...</small></td>

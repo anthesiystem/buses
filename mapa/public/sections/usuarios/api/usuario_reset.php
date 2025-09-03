@@ -25,7 +25,7 @@ try{
   if ($ok) {
     // Registrar en bitácora
     $usuario_session = obtenerUsuarioSession();
-    $descripcion = "Contraseña reseteada a 'admin' para usuario: {$usuario_data['cuenta']}";
+    $descripcion = "Contraseña reseteada a para usuario: {$usuario_data['cuenta']}";
     registrarBitacora($pdo, $usuario_session, 'usuario', 'usuario_reset', $descripcion, $id);
   }
   

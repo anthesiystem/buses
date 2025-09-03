@@ -4,7 +4,11 @@ require_once __DIR__ . '/../../../../server/config.php';
 
 $catalogo = $_GET['catalogo'] ?? '';
 if ($catalogo==='modulo'){
-  $rs=$pdo->query("SELECT ID, descripcion FROM modulo WHERE activo=1 ORDER BY descripcion");
+  $rs=$pdo->query("SELECT ID, descripcion FROM modulo WHERE activo = 1 AND descripcion IN ('bitacora', 'buses', 'catalogo', 'registro', 'usuarios') ORDER BY ID DESC");
+  echo json_encode($rs->fetchAll(PDO::FETCH_ASSOC)); exit;
+}
+if ($catalogo==='modulo_mapa'){
+  $rs=$pdo->query("SELECT ID, descripcion FROM modulo WHERE activo = 1 AND descripcion IN ('mapa_bus', 'mapa_general') ORDER BY ID DESC");
   echo json_encode($rs->fetchAll(PDO::FETCH_ASSOC)); exit;
 }
 if ($catalogo==='bus'){

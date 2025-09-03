@@ -54,6 +54,7 @@ const toArray = (v) => Array.isArray(v) ? v : (v && Array.isArray(v.data) ? v.da
 const globales = {
   usuarios: [],
   modulos: [],
+  modulosMapa: [], // Módulos específicos para permisos de mapa
   entidades: [],
   buses: []
 };
@@ -106,11 +107,18 @@ async function cargarCatalogos(){
   const busData = await fetchJSON(apiBase+'permisos_listar.php?catalogo=bus') || [];
   llenarSelect($('#permBus'), busData, 'ID', 'descripcion', true, 'Todos');
 
-  const modData = await fetchJSON(apiBase+'modulos_listar.php') || [];
+  // Cargar módulos filtrados solo para permisos
+  const modData = await fetchJSON(apiBase+'permisos_listar.php?catalogo=modulo') || [];
   llenarSelect($('#permModulo'), modData, 'ID', 'descripcion');
+  
+  // Actualizar objeto globales para los lotes
+  globales.modulos = modData;
 
   const userData = await fetchJSON(apiBase+'usuarios_listar.php?catalogo=usuarios') || [];
   llenarSelect($('#permUsuario'), userData, 'ID', 'cuenta');
+  
+  // Actualizar objeto globales para los lotes
+  globales.usuarios = userData;
 
   const personaData = await fetchJSON(apiBase+'usuarios_listar.php?catalogo=personas') || [];
   llenarSelect($('#usuarioPersona'), personaData, 'ID', 'nombre_completo');
@@ -198,18 +206,36 @@ async function cargarUsuarios(){
   const tb = $('#tbUsuarios'); if (!tb) return;
   tb.innerHTML = '';
   data.forEach(u => {
+    const activo = u.activo == '1' ? 'Sí' : 'No';
+    const activoClass = u.activo == '1' ? 'text-success' : 'text-muted';
+    const btnToggleText = u.activo == '1' ? 'Desactivar' : 'Activar';
+    const btnToggleClass = u.activo == '1' ? 'btn-outline-secondary' : 'btn-outline-success';
+    const btnToggleIcon = u.activo == '1' ? 'eye-slash' : 'eye';
+    
     tb.innerHTML += `
       <tr>
         <td>${u.ID}</td>
         <td class="text-start">${u.cuenta}</td>
         <td>${u.nivel}</td>
         <td class="text-start">${u.persona||''}</td>
-        <td>${u.activo=='1'?'Sí':'No'}</td>
+        <td class="${activoClass}">${activo}</td>
         <td>
-          <button class="btn btn-sm btn-outline-primary" 
+          <button class="btn btn-sm btn-outline-primary me-1" 
             data-usuario='${JSON.stringify(u).replace(/'/g, "&apos;")}' 
-            onclick="abrirModalUsuario(JSON.parse(this.dataset.usuario))">Editar</button>
-          <button class="btn btn-sm btn-outline-warning" onclick="resetPass(${u.ID})">Reset pass</button>
+            onclick="abrirModalUsuario(JSON.parse(this.dataset.usuario))" 
+            title="Editar">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-warning me-1" 
+            onclick="resetPass(${u.ID})" 
+            title="Reset contraseña">
+            <i class="fas fa-key"></i>
+          </button>
+          <button class="btn btn-sm ${btnToggleClass}" 
+            onclick="toggleUsuario(${u.ID})" 
+            title="${btnToggleText}">
+            <i class="fas fa-${btnToggleIcon}"></i>
+          </button>
         </td>
       </tr>`;
   });
@@ -247,6 +273,29 @@ async function resetPass(id){
   toast('Contraseña reseteada');
 }
 
+async function toggleUsuario(id){
+  if (!confirm('¿Cambiar el estado del usuario?')) return;
+  const r = await fetch(apiBase+'usuario_toggle.php', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:`ID=${id}`
+  });
+  
+  if (!r.ok) { 
+    toast('Error al cambiar estado', 'error'); 
+    return; 
+  }
+  
+  const result = await r.json();
+  if (!result.ok) {
+    toast(result.msg || 'Error al cambiar estado', 'error');
+    return;
+  }
+  
+  toast('Estado cambiado');
+  await cargarUsuarios();
+}
+
 // Eventos usuarios
 $('#buscarUsuario')?.addEventListener('input', ()=>{ clearTimeout(window._deb2); window._deb2=setTimeout(cargarUsuarios,250); });
 $('#formUsuario')?.addEventListener('submit', e => { e.preventDefault(); guardarUsuario(e.target); });
@@ -263,6 +312,9 @@ async function cargarPermisos(){
   const tb = $('#tbPermisos'); if (!tb) return;
   tb.innerHTML = '';
   data.forEach(p => {
+    // Convertir acción READ a Leer para mostrar
+    const accionMostrar = (p.accion === 'READ' || p.accion === 'READ') ? 'Leer' : (p.accion || '');
+    
     tb.innerHTML += `
       <tr>
         <td>${p.ID}</td>
@@ -270,7 +322,7 @@ async function cargarPermisos(){
         <td class="text-start">${p.modulo}</td>
         <td class="text-start">${p.entidad||'Todas'}</td>
         <td class="text-start">${p.bus||'Todos'}</td>
-        <td>${p.accion}</td>
+        <td>${accionMostrar}</td>
         <td>${p.activo=='1'?'Sí':'No'}</td>
         <td>
           <button class="btn btn-sm btn-outline-primary" 
@@ -290,9 +342,9 @@ window.abrirModalPermiso = function(p=null){
   $('#permModulo').value   = p?.Fk_modulo || '';
   $('#permEntidad').value  = p?.FK_entidad || '';
   $('#permBus').value      = p?.FK_bus || '';
-  $('#permAccion').value   = p?.accion || '';
+  $('#permAccion').value   = p?.accion || 'READ';
   $('#permActivo').value   = p?.activo ?? '1';
-  if (!p) new bootstrap.Modal($('#modalPermiso')).show();
+  new bootstrap.Modal($('#modalPermiso')).show();
 };
 
 async function guardarPermiso(form){
@@ -457,11 +509,14 @@ function renderLotes() {
     const combos = grupo.combos || [];
     const token = grupo.group_token || 'individual';
     
+    // Convertir acción para mostrar
+    const accionMostrar = (grupo.accion === 'read') ? 'Leer' : (grupo.accion || 'General');
+    
     return `
       <tr data-token="${token}">
         <td><strong>${grupo.usuario}</strong></td>
         <td><code>${grupo.modulo}</code></td>
-        <td><span class="badge bg-primary">${grupo.accion || 'General'}</span></td>
+        <td><span class="badge bg-primary">${accionMostrar}</span></td>
         <td>${renderEstadoCombinado(combos)}</td>
         <td class="col-sm-hide">${renderCombinaciones(combos)}</td>
         <td class="col-sm-hide"><small class="text-muted">${token.substring(0,8)}...</small></td>
@@ -527,7 +582,7 @@ window.abrirModalLote = async function() {
   $('#loteTokenDisplay').value = '(se generará automáticamente)';
   
   // Verificar si los datos están cargados
-  if (globales.usuarios.length === 0 || globales.modulos.length === 0) {
+  if (globales.usuarios.length === 0 || globales.modulosMapa.length === 0) {
     console.log('Datos no cargados, cargando...');
     await cargarCatalogosLotes();
     await poblarFiltrosLotes();
@@ -535,11 +590,11 @@ window.abrirModalLote = async function() {
     console.log('Datos ya cargados, usando caché');
     // Solo llenar los selects del modal
     fillSelect($('#loteUsuario'), globales.usuarios, false);
-    fillSelect($('#loteModulo'), globales.modulos, false);
+    fillSelect($('#loteModulo'), globales.modulosMapa, false);
   }
   
   console.log('Usuarios disponibles:', globales.usuarios.length);
-  console.log('Módulos disponibles:', globales.modulos.length);
+  console.log('Módulos de mapa disponibles:', globales.modulosMapa.length);
   
   // Mostrar modal
   new bootstrap.Modal($('#modalLote')).show();
@@ -560,6 +615,10 @@ async function cargarCatalogosLotes() {
     // Cargar buses
     const busesResponse = await fetch(`${apiBase}permisos_listar.php?catalogo=bus`);
     estadoLotes.buses = await busesResponse.json();
+    
+    // Cargar módulos específicos para mapas
+    const modulosMapaResponse = await fetch(`${apiBase}permisos_listar.php?catalogo=modulo_mapa`);
+    globales.modulosMapa = await modulosMapaResponse.json();
     
     // Actualizar objeto globales para los selects
     globales.entidades = estadoLotes.entidades;
@@ -930,7 +989,7 @@ async function poblarFiltrosLotes() {
     fillSelect($('#filtroUsuarioLote'), globales.usuarios, true);
     
     // Poblar filtro de módulos  
-    fillSelect($('#filtroModuloLote'), globales.modulos, true);
+    fillSelect($('#filtroModuloLote'), globales.modulosMapa, true);
     
     // Poblar filtro de entidades
     const filtroEntidad = $('#filtroEntidadLote');
@@ -954,7 +1013,7 @@ async function poblarFiltrosLotes() {
     
     // Poblar selects del modal
     fillSelect($('#loteUsuario'), globales.usuarios, false);
-    fillSelect($('#loteModulo'), globales.modulos, false);
+    fillSelect($('#loteModulo'), globales.modulosMapa, false);
     
   } catch (error) {
     console.error('Error poblando filtros de lotes:', error);

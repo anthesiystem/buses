@@ -42,6 +42,18 @@ try {
     header("Location: ../public/login.php?error=1"); exit;
   }
 
+  // Verificar si está usando la contraseña temporal "admin"
+  if (password_verify('admin', $hash) || trim($password) === 'admin') {
+    // Configurar sesión mínima para el cambio de contraseña
+    $_SESSION['usuario_id'] = (int)$row['ID'];
+    $_SESSION['debe_cambiar_pass'] = true;
+    $_SESSION['cuenta'] = $row['cuenta'];
+    
+    // Redirigir a cambio de contraseña
+    header("Location: ../public/cambiar_contrasenia.php");
+    exit;
+  }
+
   // ---- SESIÓN ----
   $usuarioSesion = [
     'ID'      => (int)$row['ID'],

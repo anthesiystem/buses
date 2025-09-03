@@ -106,8 +106,8 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bitácora de Auditoría</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="../server/style/bootstrap.min.css" rel="stylesheet">
+    <link href="../server/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root{
             --brand:#7b1e2b; --brand-600:#8e2433; --brand-700:#661822; --brand-rgb:123,30,43;
@@ -466,10 +466,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Sistema de registro de vistas en bitácora -->
-<script src="../assets/js/bitacora_tracker.js"></script>
+<script src="../server/js/bootstrap.bundle.min.js"></script>
 
     <script>
         // Variables globales para paginación

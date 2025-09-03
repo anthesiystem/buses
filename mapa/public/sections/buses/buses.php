@@ -286,9 +286,7 @@
   
   <!-- Controles de paginación y búsqueda -->
   <div class="pagination-controls">
-    <div class="search-box">
-      <input type="text" id="searchInput" class="form-control" placeholder="Buscar buses..." autocomplete="off">
-    </div>
+ 
     
     <div class="pagination-info">
       <div class="per-page-selector">
@@ -336,8 +334,7 @@
 </script>
 <script src="buses.js?v=<?=time()?>"></script>
 
-<!-- Sistema de registro de vistas en bitácora -->
-<script src="../../assets/js/bitacora_tracker.js"></script>
+
 
 <script> if (window.initBuses) window.initBuses(); </script>
 

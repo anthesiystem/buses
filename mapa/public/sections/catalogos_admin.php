@@ -256,7 +256,7 @@ if (isset($_GET['api'])) {
   <title>Catálogos (Categoría / Dependencia / Motor Base / Tecnología)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Bootstrap 5 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="../server/style/bootstrap.min.css" rel="stylesheet">
   <style>
     :root{
       --brand:#7b1e2b; --brand-600:#8e2433; --brand-700:#661822; --brand-rgb:123,30,43;
@@ -399,8 +399,8 @@ if (isset($_GET['api'])) {
   </div>
 
   <!-- Bootstrap + Icons -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script src="../server/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="../server/font/bootstrap-icons.css">
   <script>
   // Usa el base global si lo tienes en el layout: window.APP_BASE = "/final/mapa/public/";
   const BASE = (window.APP_BASE || "/final/mapa/public/").replace(/\/+$/,'') + "/";
@@ -643,7 +643,6 @@ async function toggleActivo(tabla, id) {
     function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
   </script>
   
-  <!-- Sistema de registro de vistas en bitácora -->
-  <script src="../assets/js/bitacora_tracker.js"></script>
+
 </body>
 </html>

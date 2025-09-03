@@ -418,7 +418,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </style>
 
 <!-- Bootstrap Icons para el modal -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../server/font/bootstrap-icons.css">
 <link rel="stylesheet" href="/final/mapa/public/sections/lineadetiempo/stylelineatiempo.css">
 
 <!-- Script para el Modal de Comentarios -->
@@ -618,9 +618,9 @@ document.addEventListener("DOMContentLoaded", function () {
 <script src="/final/mapa/public/sections/lineadetiempo/comentarios_ui.js"></script>
 
 <!-- PDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="../server/js/jspdf.umd.min.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script src="../server/js/jspdf.plugin.autotable.min.js"></script>
 <script>window.jsPDF = window.jspdf.jsPDF;</script>
 <script src="/final/mapa/server/generar_pdf_v2.js?v=<?php echo time(); ?>"></script>
 <script src="/final/mapa/public/debug_rutas.js?v=<?php echo time(); ?>"></script>

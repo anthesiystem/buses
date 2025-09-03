@@ -595,7 +595,7 @@ tbody, td, tfoot, th, thead, tr {
 </div>
 
 <!-- Estilos y Scripts -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../server/font/bootstrap-icons.css">
 <link rel="stylesheet" href="/final/mapa/public/sections/lineadetiempo/stylelineatiempo.css">
 
 <script>
@@ -611,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Estilos y Scripts -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<link rel="stylesheet" href="../server/font/bootstrap-icons.css">
 <link rel="stylesheet" href="/final/mapa/public/sections/lineadetiempo/stylelineatiempo.css">
 
 <script>

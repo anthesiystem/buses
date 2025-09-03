@@ -29,7 +29,7 @@ function can($mod, $acc='READ'){ return acl_can($mod, $acc); }
   <title>Sistema de Buses</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="../server/styles_layout.css" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../server/style/bootstrap.min.css" rel="stylesheet">
   <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
   <script src="https://unpkg.com/akar-icons-fonts"></script>
   <style>
@@ -128,7 +128,7 @@ function can($mod, $acc='READ'){ return acl_can($mod, $acc); }
   </aside>
 
   <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../server/js/bootstrap.bundle.min.js"></script>
   <script>
     const toggleBtn = document.getElementById("toggleSidebar");
     toggleBtn?.addEventListener("click", () => {
