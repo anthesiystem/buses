@@ -106,8 +106,8 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bitácora de Auditoría</title>
-    <link href="../server/style/bootstrap.min.css" rel="stylesheet">
-    <link href="../server/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/final/mapa/server/style/bootstrap.min.css" rel="stylesheet">
+    <link href="/final/mapa/server/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root{
             --brand:#7b1e2b; --brand-600:#8e2433; --brand-700:#661822; --brand-rgb:123,30,43;
@@ -133,7 +133,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
         }
         .table-responsive{ max-height:70vh; }
         .table-brand thead th{
-            position:sticky; top:0; z-index:5; background:var(--header-bg);
+            background:var(--header-bg);
             border-bottom:1px solid var(--header-border); color:var(--muted);
             font-weight:700; text-transform:uppercase; font-size:.78rem; letter-spacing:.5px; cursor:pointer;
         }
@@ -466,7 +466,7 @@ $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
     </div>
 </div>
 
-<script src="../server/js/bootstrap.bundle.min.js"></script>
+<script src="/final/mapa/server/js/bootstrap.bundle.min.js"></script>
 
     <script>
         // Variables globales para paginación

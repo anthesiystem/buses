@@ -58,7 +58,7 @@ $comentarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <!-- Bootstrap y jQuery -->
 <link rel="stylesheet" href="../server/style/bootstrap.min.css">
 <script src="../server/js/jquery.min.js"></script>
-<script src="../server/js/bootstrap.bundle.min.js"></script>
+<script src="/final/mapa/server/js/bootstrap.bundle.min.js"></script>
 
 <!-- Estilos del timeline -->
 <style>

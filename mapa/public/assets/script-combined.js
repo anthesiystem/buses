@@ -70,9 +70,12 @@ function cargarSeccion(ruta) {
                     // Después de cargar todos los scripts, intentar inicializar componentes específicos
                     setTimeout(() => {
                         // Inicializar catálogos si existe la función
-                        if (typeof window.initCatalogos === 'function') {
+                        if (typeof window.initCatalogosWhenReady === 'function') {
                             console.log('🔄 Inicializando catálogos desde script-combined');
-                            window.initCatalogos();
+                            window.initCatalogosWhenReady();
+                        } else if (typeof window.reinitCatalogos === 'function') {
+                            console.log('🔄 Reinicializando catálogos desde script-combined');
+                            window.reinitCatalogos();
                         }
                         
                         // Inicializar registros si existe la función

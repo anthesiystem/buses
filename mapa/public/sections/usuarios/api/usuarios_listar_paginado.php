@@ -1,52 +1,33 @@
 <?php
 // usuarios_listar_paginado.php - API para listar usuarios con paginación
+ob_start(); // Iniciar buffer de salida para evitar warnings
 header('Content-Type: application/json; charset=utf-8');
 
-require_once '../../../server/config.php';
+require_once '../../../../server/config.php';
 
 try {
     // Parámetros de paginación
-    $page = max(1, intval($_GET['page'] ?? 1));
-    $rowsPerPage = max(1, min(100, intval($_GET['rowsPerPage'] ?? 10)));
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $rowsPerPage = isset($_GET['rowsPerPage']) ? (int)$_GET['rowsPerPage'] : 10;
     $offset = ($page - 1) * $rowsPerPage;
     
-    // Parámetro de búsqueda
-    $buscar = trim($_GET['buscar'] ?? '');
-    
-    // Construir condición WHERE
-    $whereConditions = [];
-    $params = [];
-    
-    if (!empty($buscar)) {
-        $whereConditions[] = "(u.cuenta LIKE ? OR CONCAT(p.nombre, ' ', p.apaterno, ' ', p.amaterno) LIKE ?)";
-        $searchTerm = "%$buscar%";
-        $params = array_merge($params, [$searchTerm, $searchTerm]);
-    }
-    
-    $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
-    
     // Contar total de registros
-    $countSql = "SELECT COUNT(*) as total 
-                 FROM usuario u 
-                 LEFT JOIN personas p ON u.Fk_persona = p.ID
-                 $whereClause";
-    
-    $stmt = $pdo->prepare($countSql);
-    $stmt->execute($params);
-    $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total = $pdo->query("SELECT COUNT(*) FROM usuario u WHERE u.activo = 1")->fetchColumn();
     $totalPages = ceil($total / $rowsPerPage);
     
-    // Obtener registros con paginación
-    $sql = "SELECT u.*, 
-                   CONCAT(p.nombre, ' ', p.apaterno, ' ', p.amaterno) as persona
-            FROM usuario u 
-            LEFT JOIN personas p ON u.Fk_persona = p.ID
-            $whereClause
-            ORDER BY u.ID DESC
-            LIMIT $rowsPerPage OFFSET $offset";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    // Consulta con LIMIT y OFFSET
+    $stmt = $pdo->prepare("
+        SELECT u.*, 
+               CONCAT(p.nombre, ' ', p.apaterno, ' ', p.amaterno) as persona
+        FROM usuario u 
+        LEFT JOIN personas p ON u.Fk_persona = p.ID
+        WHERE u.activo = 1
+        ORDER BY u.ID DESC
+        LIMIT :limit OFFSET :offset
+    ");
+    $stmt->bindValue(':limit', $rowsPerPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Generar HTML
@@ -55,8 +36,8 @@ try {
         $activo = $u['activo'] == '1' ? 'Sí' : 'No';
         $activoClass = $u['activo'] == '1' ? 'text-success' : 'text-muted';
         $btnToggleText = $u['activo'] == '1' ? 'Desactivar' : 'Activar';
-        $btnToggleClass = $u['activo'] == '1' ? 'btn-outline-secondary' : 'btn-outline-success';
-        $btnToggleIcon = $u['activo'] == '1' ? 'eye-slash' : 'eye';
+        $btnToggleClass = $u['activo'] == '1' ? 'btn-outline-danger' : 'btn-outline-success';
+        $btnToggleIcon = $u['activo'] == '1' ? 'user-slash' : 'user-check';
         
         // Definir niveles de usuario
         $nivelesTexto = [
@@ -98,15 +79,15 @@ try {
     }
     
     // Respuesta JSON
+    ob_clean(); // Limpiar cualquier output anterior
     echo json_encode([
         'html' => $html,
-        'total' => intval($total),
-        'totalPages' => intval($totalPages),
-        'currentPage' => $page,
-        'rowsPerPage' => $rowsPerPage
+        'total' => (int)$total,
+        'totalPages' => (int)$totalPages
     ]);
     
 } catch (Exception $e) {
+    ob_clean(); // Limpiar cualquier output anterior
     http_response_code(500);
     echo json_encode([
         'error' => 'Error interno del servidor',

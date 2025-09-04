@@ -1,14 +1,13 @@
 <?php
 // permisos_listar_paginado.php - API para listar permisos con paginación
-ob_start(); // Iniciar buffer de salida para evitar warnings
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/../../../../server/config.php';
+require_once '../../../server/config.php';
 
 try {
     // Parámetros de paginación
-    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-    $rowsPerPage = isset($_GET['rowsPerPage']) ? (int)$_GET['rowsPerPage'] : 10;
+    $page = max(1, intval($_GET['page'] ?? 1));
+    $rowsPerPage = max(1, min(100, intval($_GET['rowsPerPage'] ?? 10)));
     $offset = ($page - 1) * $rowsPerPage;
     
     // Parámetros de filtro
@@ -18,7 +17,7 @@ try {
     $filtroBus = trim($_GET['bus'] ?? '');
     
     // Construir condición WHERE
-    $whereConditions = ['p.activo = 1'];
+    $whereConditions = [];
     $params = [];
     
     if (!empty($filtroUsuario)) {
@@ -41,7 +40,7 @@ try {
         $params[] = $filtroBus;
     }
     
-    $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
+    $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
     
     // Contar total de registros
     $countSql = "SELECT COUNT(*) as total 
@@ -57,24 +56,23 @@ try {
     $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $totalPages = ceil($total / $rowsPerPage);
     
-    // Consulta con LIMIT y OFFSET
-    $stmt = $pdo->prepare("
-        SELECT p.*, 
-               u.cuenta as usuario,
-               m.descripcion as modulo,
-               e.descripcion as entidad,
-               b.descripcion as bus
-        FROM permiso_usuario p 
-        LEFT JOIN usuario u ON p.Fk_usuario = u.ID
-        LEFT JOIN modulo m ON p.Fk_modulo = m.ID
-        LEFT JOIN entidad e ON p.FK_entidad = e.ID
-        LEFT JOIN bus b ON p.FK_bus = b.ID
-        $whereClause
-        ORDER BY p.ID DESC
-        LIMIT ? OFFSET ?
-    ");
+    // Obtener registros con paginación
+    $sql = "SELECT p.*, 
+                   u.cuenta as usuario,
+                   m.descripcion as modulo,
+                   e.descripcion as entidad,
+                   b.descripcion as bus
+            FROM permiso_usuario p 
+            LEFT JOIN usuario u ON p.Fk_usuario = u.ID
+            LEFT JOIN modulo m ON p.Fk_modulo = m.ID
+            LEFT JOIN entidad e ON p.FK_entidad = e.ID
+            LEFT JOIN bus b ON p.FK_bus = b.ID
+            $whereClause
+            ORDER BY p.ID DESC
+            LIMIT $rowsPerPage OFFSET $offset";
     
-    $stmt->execute(array_merge($params, [$rowsPerPage, $offset]));
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Generar HTML
@@ -115,15 +113,15 @@ try {
     }
     
     // Respuesta JSON
-    ob_clean(); // Limpiar cualquier output anterior
     echo json_encode([
         'html' => $html,
-        'total' => (int)$total,
-        'totalPages' => (int)$totalPages
+        'total' => intval($total),
+        'totalPages' => intval($totalPages),
+        'currentPage' => $page,
+        'rowsPerPage' => $rowsPerPage
     ]);
     
 } catch (Exception $e) {
-    ob_clean(); // Limpiar cualquier output anterior
     http_response_code(500);
     echo json_encode([
         'error' => 'Error interno del servidor',

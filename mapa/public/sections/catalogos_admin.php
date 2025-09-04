@@ -53,18 +53,47 @@ $TABLES = [
 ];
 
 // Utilidades
-function bad_request($msg='Solicitud inválida'){ http_response_code(400); echo json_encode(['ok'=>false,'msg'=>$msg]); exit; }
-function ok($data=[]){ header('Content-Type: application/json; charset=utf-8'); echo json_encode(['ok'=>true]+$data); exit; }
+function bad_request($msg='Solicitud inválida'){ 
+  // Limpiar cualquier salida previa
+  if (ob_get_level()) {
+    ob_clean();
+  }
+  http_response_code(400); 
+  header('Content-Type: application/json; charset=utf-8');
+  echo json_encode(['ok'=>false,'msg'=>$msg]); 
+  exit; 
+}
+function ok($data=[]){ 
+  // Limpiar cualquier salida previa
+  if (ob_get_level()) {
+    ob_clean();
+  }
+  http_response_code(200);
+  header('Content-Type: application/json; charset=utf-8'); 
+  echo json_encode(['ok'=>true]+$data); 
+  exit; 
+}
 function tbl_is_allowed($t,$TABLES){ return isset($TABLES[$t]); }
 
 // ------------------- API (AJAX) ---------------------------
 if (isset($_GET['api'])) {
+  // Configuración para API: no mostrar errores PHP en salida
+  ini_set('display_errors', 0);
+  ini_set('log_errors', 1);
+  
+  // Limpiar cualquier salida previa
+  if (ob_get_level()) {
+    ob_clean();
+  }
+  ob_start();
+  
   header('Content-Type: application/json; charset=utf-8');
 
   $action = $_GET['api'] ?? '';
   $tabla  = strtolower(trim($_POST['tabla'] ?? ($_GET['tabla'] ?? '')));
 
   if (!tbl_is_allowed($tabla, $TABLES)) {
+    ob_clean();
     bad_request('Tabla no permitida: ' . $tabla);
   }
 
@@ -110,11 +139,31 @@ if (isset($_GET['api'])) {
       }
 
       case 'save': {
+        // Validar que tenemos datos mínimos
+        if (empty($_POST)) {
+          bad_request('No se recibieron datos');
+        }
+        
         $id = (int)($_POST['ID'] ?? 0);
         $data = [];
         foreach ($cols as $c) { $data[$c] = trim((string)($_POST[$c] ?? '')); }
 
-        $usuario_info = obtenerUsuarioSession();
+        // Validar datos requeridos
+        foreach ($TABLES[$tabla]['fields'] as $field) {
+          if (($field['required'] ?? false) && empty($data[$field['name']])) {
+            bad_request("El campo '{$field['label']}' es requerido");
+          }
+        }
+
+        try {
+          $usuario_id = obtenerUsuarioSession();
+          if (!$usuario_id || $usuario_id <= 0) {
+            bad_request('No se pudo obtener información del usuario');
+          }
+        } catch (Exception $e) {
+          error_log("Error obteniendo usuario: " . $e->getMessage());
+          bad_request('Error de autenticación');
+        }
 
         if ($id > 0) {
           // Obtener datos anteriores para el log
@@ -146,7 +195,7 @@ if (isset($_GET['api'])) {
           
           registrarBitacora(
             $pdo, 
-            $usuario_info['user_id'], 
+            $usuario_id, 
             $tabla, 
             'UPDATE', 
             $descripcion_bitacora, 
@@ -177,7 +226,7 @@ if (isset($_GET['api'])) {
           
           registrarBitacora(
             $pdo, 
-            $usuario_info['user_id'], 
+            $usuario_id, 
             $tabla, 
             'INSERT', 
             $descripcion_bitacora, 
@@ -191,6 +240,17 @@ if (isset($_GET['api'])) {
       case 'toggle': {
         $id = (int)($_POST['id'] ?? 0);
         if ($id <= 0) bad_request('ID inválido');
+
+        // Validar autenticación
+        try {
+          $usuario_id = obtenerUsuarioSession();
+          if (!$usuario_id || $usuario_id <= 0) {
+            bad_request('No se pudo obtener información del usuario');
+          }
+        } catch (Exception $e) {
+          error_log("Error obteniendo usuario en toggle: " . $e->getMessage());
+          bad_request('Error de autenticación');
+        }
 
         // Obtener información del registro antes del cambio
         $selectCols = "CAST(activo AS UNSIGNED) AS act";
@@ -209,32 +269,42 @@ if (isset($_GET['api'])) {
         $new = $act ? 0 : 1;
         $bit = $new ? "b'1'" : "b'0'";
 
-        if (!empty($TABLES[$tabla]['hasFechaBaja']) && $TABLES[$tabla]['hasFechaBaja']) {
-          $sql = "UPDATE `$tabla`
-                  SET activo = $bit,
-                      fecha_baja = " . ($new ? "NULL" : "NOW()") . "
-                  WHERE ID = ?";
-        } else {
-          $sql = "UPDATE `$tabla` SET activo = $bit WHERE ID = ?";
+        // Ejecutar el update
+        try {
+          if (!empty($TABLES[$tabla]['hasFechaBaja']) && $TABLES[$tabla]['hasFechaBaja']) {
+            $sql = "UPDATE `$tabla`
+                    SET activo = $bit,
+                        fecha_baja = " . ($new ? "NULL" : "NOW()") . "
+                    WHERE ID = ?";
+          } else {
+            $sql = "UPDATE `$tabla` SET activo = $bit WHERE ID = ?";
+          }
+          $st = $pdo->prepare($sql);
+          $st->execute([$id]);
+        } catch (Exception $e) {
+          error_log("Error ejecutando UPDATE en toggle: " . $e->getMessage());
+          bad_request('Error al actualizar el registro');
         }
-        $st = $pdo->prepare($sql);
-        $st->execute([$id]);
 
         // Registrar en bitácora
-        $usuario_info = obtenerUsuarioSession();
-        $nombre_item = $info['descripcion'] ?? $info[$cols[0]] ?? "ID $id";
-        $accion = $new ? 'ACTIVAR' : 'DESACTIVAR';
-        $accion_texto = $new ? 'activado' : 'desactivado';
-        $descripcion_bitacora = "Registro en $tabla '$nombre_item' $accion_texto";
-        
-        registrarBitacora(
-          $pdo, 
-          $usuario_info['user_id'], 
-          $tabla, 
-          $accion, 
-          $descripcion_bitacora, 
-          $id
-        );
+        try {
+          $nombre_item = $info['descripcion'] ?? $info[$cols[0]] ?? "ID $id";
+          $accion = $new ? 'ACTIVAR' : 'DESACTIVAR';
+          $accion_texto = $new ? 'activado' : 'desactivado';
+          $descripcion_bitacora = "Registro en $tabla '$nombre_item' $accion_texto";
+          
+          registrarBitacora(
+            $pdo, 
+            $usuario_id, 
+            $tabla, 
+            $accion, 
+            $descripcion_bitacora, 
+            $id
+          );
+        } catch (Exception $e) {
+          error_log("Error registrando en bitácora toggle: " . $e->getMessage());
+          // No fallar la operación por error en bitácora
+        }
 
         ok(['msg'=>'Estado actualizado','activo'=>$new]);
       }
@@ -243,7 +313,28 @@ if (isset($_GET['api'])) {
         bad_request('Acción no reconocida');
     }
   } catch (Throwable $e) {
-    bad_request('Error: ' . $e->getMessage());
+    // Limpiar cualquier salida previa
+    if (ob_get_level()) {
+      ob_clean();
+    }
+    
+    // Log del error completo para debugging
+    error_log("Error en catalogos_admin.php: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+    
+    // Respuesta JSON de error
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+      'ok' => false, 
+      'msg' => 'Error interno del servidor: ' . $e->getMessage(),
+      'debug' => [
+        'action' => $action ?? 'unknown',
+        'tabla' => $tabla ?? 'unknown',
+        'file' => $e->getFile(),
+        'line' => $e->getLine()
+      ]
+    ]);
+    exit;
   }
 }
 
@@ -282,7 +373,7 @@ if (isset($_GET['api'])) {
     }
     .table-responsive{ max-height:70vh; }
     .table-brand thead th{
-      position:sticky; top:0; z-index:5; background:var(--header-bg);
+      background:var(--header-bg);
       border-bottom:1px solid var(--header-border); color:var(--muted);
       font-weight:700; text-transform:uppercase; font-size:.78rem; letter-spacing:.5px; cursor:pointer;
     }
@@ -399,7 +490,7 @@ if (isset($_GET['api'])) {
   </div>
 
   <!-- Bootstrap + Icons -->
-  <script src="../server/js/bootstrap.bundle.min.js"></script>
+  <script src="/final/mapa/server/js/bootstrap.bundle.min.js"></script>
   <link rel="stylesheet" href="../server/font/bootstrap-icons.css">
   <script>
   // Usa el base global si lo tienes en el layout: window.APP_BASE = "/final/mapa/public/";
@@ -424,27 +515,48 @@ if (isset($_GET['api'])) {
 
     // Cargar al iniciar
     function initCatalogosAdmin(root=document) {
-      console.log('Iniciando catalogos admin...');
+      console.log('Iniciando catalogos admin...', root);
+      
+      // Verificar que tenemos las tablas necesarias
+      if (!TABLES || Object.keys(TABLES).length === 0) {
+        console.error('TABLES no está definido o está vacío');
+        return;
+      }
       
       // Cargar primera pestaña inmediatamente
       const firstTable = Object.keys(TABLES)[0];
+      console.log('Cargando primera tabla:', firstTable);
+      
       loadTable(firstTable).then(() => {
+        console.log('Primera tabla cargada, cargando el resto...');
         // Cargar el resto en segundo plano
-        Object.keys(TABLES).slice(1).forEach(t => loadTable(t));
+        Object.keys(TABLES).slice(1).forEach(t => {
+          console.log('Cargando tabla:', t);
+          loadTable(t);
+        });
+      }).catch(err => {
+        console.error('Error cargando primera tabla:', err);
       });
 
       // Cambios de pestaña
       root.querySelectorAll('[data-tabla]').forEach(btn => {
+        console.log('Configurando evento para tab:', btn.getAttribute('data-tabla'));
         btn.addEventListener('shown.bs.tab', ev => {
           activeTab = ev.target.getAttribute('data-tabla');
-          if (!cache[activeTab]) loadTable(activeTab);
+          console.log('Cambiando a tab:', activeTab);
+          if (!cache[activeTab]) {
+            console.log('Cargando nueva tab:', activeTab);
+            loadTable(activeTab);
+          }
         });
       });
 
       // Buscar
       root.querySelectorAll('input[data-role="search"]').forEach(i => {
+        console.log('Configurando busqueda para:', i.getAttribute('data-tabla'));
         i.addEventListener('input', debounce(() => {
           const tabla = i.getAttribute('data-tabla');
+          console.log('Buscando en tabla:', tabla, i.value.trim());
           loadTable(tabla, i.value.trim());
         }, 300));
       });
@@ -452,36 +564,132 @@ if (isset($_GET['api'])) {
       // Submit modal
       const form = root.querySelector('#formCat');
       if (form) {
+        console.log('Configurando evento submit del formulario');
         form.addEventListener('submit', saveForm);
+      } else {
+        console.warn('Formulario #formCat no encontrado');
       }
     }
 
     // Función para reinicializar cuando se carga en contenedor
     function reinitCatalogos() {
-      console.log('Reinicializando catálogos...');
+      console.log('🔄 Reinicializando catálogos...');
+      
+      // Verificar si realmente necesitamos reinicializar
+      const tabsContainer = document.getElementById('tabsCat');
+      if (!tabsContainer) {
+        console.log('📋 No hay contenido de catálogos para reinicializar');
+        return;
+      }
+      
       // Limpiar cache
       Object.keys(cache).forEach(k => delete cache[k]);
-      // Reiniciar
+      
+      // Limpiar event listeners previos
+      const existingElements = document.querySelectorAll('[data-tabla], input[data-role="search"], #formCat');
+      existingElements.forEach(el => {
+        const newEl = el.cloneNode(true);
+        el.parentNode.replaceChild(newEl, el);
+      });
+      
+      // Reiniciar con límite de intentos
+      setTimeout(() => {
+        initWhenReady(3, 1); // Máximo 3 intentos en reinicialización
+      }, 100);
+    }
+
+    // Función de inicialización robusta
+    function initWhenReady(maxAttempts = 10, currentAttempt = 1) {
+      // Verificar si los elementos necesarios están presentes
+      const tabsContainer = document.getElementById('tabsCat');
+      const firstTable = document.querySelector('table[id^="table-"]');
+      
+      if (!tabsContainer || !firstTable) {
+        if (currentAttempt >= maxAttempts) {
+          console.warn(`⚠️ No se pudieron encontrar los elementos de catálogos después de ${maxAttempts} intentos. Saltando inicialización.`);
+          return;
+        }
+        
+        console.log(`🔄 Elementos no encontrados (intento ${currentAttempt}/${maxAttempts}), reintentando...`);
+        setTimeout(() => initWhenReady(maxAttempts, currentAttempt + 1), 200);
+        return;
+      }
+      
+      console.log('✅ Elementos encontrados, inicializando catálogos...');
       initCatalogosAdmin(document);
+      
+      // Disparar evento de inicialización completada
+      window.dispatchEvent(new CustomEvent('catalogos-initialized'));
     }
 
     // Init en carga directa
     if (document.readyState !== 'loading') {
-      initCatalogosAdmin(document);
+      initWhenReady();
     } else {
-      document.addEventListener('DOMContentLoaded', () => initCatalogosAdmin(document));
+      document.addEventListener('DOMContentLoaded', initWhenReady);
     }
 
-    // Init en carga dinámica
-    if (window.parent !== window) {
-      reinitCatalogos();
-    }
-
-    // Exponer para llamada externa
+    // Exponer funciones para llamada externa
     window.reinitCatalogos = reinitCatalogos;
+    window.initCatalogosAdmin = initCatalogosAdmin;
+    window.initCatalogosWhenReady = initWhenReady;
 
-// Deja accesible para que index.php pueda llamar tras inyectar
-window.initCatalogosAdmin = initCatalogosAdmin;
+    // Auto-detección de carga dinámica
+    // Si el script se ejecuta y no hay elementos en el DOM inicial,
+    // probablemente se está cargando dinámicamente
+    const scriptElement = document.currentScript;
+    if (scriptElement) {
+      // Marcar que este script ya se ejecutó
+      scriptElement.setAttribute('data-catalogos-loaded', 'true');
+    }
+
+    // Observer para detectar cuando se agrega contenido al DOM
+    if (typeof MutationObserver !== 'undefined') {
+      let observerActive = true;
+      let initializationPending = false;
+      
+      const observer = new MutationObserver((mutations) => {
+        if (!observerActive || initializationPending) return;
+        
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                // Verificar si se agregó contenido de catálogos
+                const tabsCat = node.querySelector ? node.querySelector('#tabsCat') : null;
+                const isTabsCat = node.id === 'tabsCat';
+                
+                if (tabsCat || isTabsCat) {
+                  console.log('🔍 Detectado contenido de catálogos agregado al DOM');
+                  
+                  if (!initializationPending) {
+                    initializationPending = true;
+                    // Esperar un poco para que el DOM se estabilice
+                    setTimeout(() => {
+                      initWhenReady(5, 1); // Máximo 5 intentos desde el observer
+                      initializationPending = false;
+                    }, 300);
+                  }
+                }
+              }
+            });
+          }
+        });
+      });
+
+      // Observar cambios en el documento
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+      
+      // Desactivar observer después de una inicialización exitosa
+      window.addEventListener('catalogos-initialized', () => {
+        console.log('📋 Catálogos inicializados, desactivando observer');
+        observerActive = false;
+        observer.disconnect();
+      });
+    }
 
 
     // Debounce
@@ -489,23 +697,53 @@ window.initCatalogosAdmin = initCatalogosAdmin;
 
     // Cargar tabla
     async function loadTable(tabla, q='') {
-      const resp = await fetch(`${ENDPOINT}?api=list&tabla=${encodeURIComponent(tabla)}&q=${encodeURIComponent(q)}`);
-      const json = await resp.json();
-      if(!json.ok){ alert(json.msg||'Error al cargar'); return; }
+      try {
+        console.log(`Cargando tabla ${tabla} con query: "${q}"`);
+        const url = `${ENDPOINT}?api=list&tabla=${encodeURIComponent(tabla)}&q=${encodeURIComponent(q)}`;
+        console.log('URL:', url);
+        
+        const resp = await fetch(url);
+        console.log('Response status:', resp.status);
+        
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        }
+        
+        const json = await resp.json();
+        console.log('Response JSON:', json);
+        
+        if(!json.ok){ 
+          console.error('API error:', json.msg);
+          alert(json.msg||'Error al cargar'); 
+          return; 
+        }
 
-      cache[tabla] = { rows: json.rows, q };
-      renderTable(tabla, 1);
+        cache[tabla] = { rows: json.rows, q };
+        console.log(`Tabla ${tabla} cargada con ${json.rows.length} filas`);
+        renderTable(tabla, 1);
+      } catch (error) {
+        console.error('Error en loadTable:', error);
+        alert('Error al cargar los datos: ' + error.message);
+      }
     }
 
     function renderTable(tabla, page=1){
+      console.log(`🎨 Renderizando tabla ${tabla}, página ${page}`);
       const rows = (cache[tabla]?.rows)||[];
       const cols = TABLES[tabla].listCols;
       const tbody = document.querySelector(`#table-${tabla} tbody`);
       const pager = document.getElementById(`pager-${tabla}`);
+      
+      if (!tbody) {
+        console.error(`❌ No se encontró tbody para tabla ${tabla}`);
+        return;
+      }
+      
       tbody.innerHTML = '';
 
       const start = (page-1)*pagerSize;
       const slice = rows.slice(start, start+pagerSize);
+      console.log(`📊 Mostrando ${slice.length} filas de ${rows.length} total`);
 
       for (const r of slice){
         const tr = document.createElement('tr');
@@ -539,15 +777,19 @@ window.initCatalogosAdmin = initCatalogosAdmin;
       }
 
       // Paginación simple
-      const pages = Math.max(1, Math.ceil(rows.length / pagerSize));
-      let html = `<nav><ul class="pagination pagination-sm mb-0">`;
-      for (let p=1; p<=pages; p++){
-        html += `<li class="page-item ${p===page?'active':''}">
-                  <a class="page-link" href="javascript:void(0)" onclick="renderTable('${tabla}', ${p})">${p}</a>
-                </li>`;
+      if (pager) {
+        const pages = Math.max(1, Math.ceil(rows.length / pagerSize));
+        let html = `<nav><ul class="pagination pagination-sm mb-0">`;
+        for (let p=1; p<=pages; p++){
+          html += `<li class="page-item ${p===page?'active':''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="renderTable('${tabla}', ${p})">${p}</a>
+                  </li>`;
+        }
+        html += `</ul></nav>`;
+        pager.innerHTML = html;
       }
-      html += `</ul></nav>`;
-      pager.innerHTML = html;
+      
+      console.log(`✅ Tabla ${tabla} renderizada correctamente`);
     }
 
     // Densidad
@@ -602,39 +844,144 @@ window.initCatalogosAdmin = initCatalogosAdmin;
     async function saveForm(ev){
       ev.preventDefault();
       const fd = new FormData(ev.target);
-      const resp = await fetch(`${ENDPOINT}?api=save`, { method:'POST', body:fd });
+      
+      // Debug: mostrar qué datos se están enviando
+      console.log('📤 Enviando datos:');
+      for (let [key, value] of fd.entries()) {
+        console.log(`  ${key}: ${value}`);
+      }
+      
+      try {
+        const resp = await fetch(`${ENDPOINT}?api=save`, { 
+          method:'POST', 
+          body:fd,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
 
-      const json = await resp.json();
-      if(!json.ok){ alert(json.msg||'Error al guardar'); return; }
-      modal.hide();
-      loadTable($('#f_tabla').value);
+        console.log('📨 Response status:', resp.status);
+        console.log('📨 Response headers:', resp.headers.get('content-type'));
+
+        // Verificar el tipo de contenido
+        const contentType = resp.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await resp.text();
+          console.error('❌ Respuesta no es JSON:', text);
+          alert('Error del servidor: La respuesta no es válida. Revisa la consola para más detalles.');
+          return;
+        }
+
+        const json = await resp.json();
+        console.log('📥 Response JSON:', json);
+        
+        if(!json.ok){ 
+          console.error('❌ Error de API:', json.msg);
+          alert(json.msg||'Error al guardar'); 
+          return; 
+        }
+        
+        console.log('✅ Guardado exitoso');
+        modal.hide();
+        loadTable($('#f_tabla').value);
+        
+      } catch (error) {
+        console.error('❌ Error en saveForm:', error);
+        if (error instanceof SyntaxError && error.message.includes('JSON')) {
+          alert('Error: El servidor devolvió una respuesta inválida. Puede haber un error de PHP.');
+        } else {
+          alert('Error al guardar: ' + error.message);
+        }
+      }
     }
 
     // Toggle activo
 async function toggleActivo(tabla, id) {
   if (!confirm('¿Cambiar estado activo/inactivo?')) return;
 
-  const url = `${ENDPOINT}?api=toggle&tabla=${encodeURIComponent(tabla)}`;
+  // Deshabilitar el botón durante la operación
+  const button = event.target.closest('button');
+  const originalContent = button.innerHTML;
+  button.disabled = true;
+  button.innerHTML = '<i class="bi bi-hourglass-split"></i>';
 
+  try {
+    console.log(`🔄 Cambiando estado de ${tabla} ID: ${id}`);
+    
+    const url = `${ENDPOINT}?api=toggle`;
+    const fd = new FormData();
+    fd.append('tabla', tabla);
+    fd.append('id', id);
 
-  const fd = new FormData();
-  fd.append('tabla', tabla);
-  fd.append('id', id);
+    console.log('📤 Enviando datos de toggle:');
+    for (let [key, value] of fd.entries()) {
+      console.log(`  ${key}: ${value}`);
+    }
 
-  const resp = await fetch(url, {
-    method: 'POST',
-    body: fd,
-    headers: { 'Accept': 'application/json' },
-    cache: 'no-store'
-  });
+    const resp = await fetch(url, {
+      method: 'POST',
+      body: fd,
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store'
+    });
 
-  let json;
-  try { json = await resp.json(); }
-  catch { alert(`Respuesta inválida (HTTP ${resp.status})`); return; }
+    console.log('📨 Toggle response status:', resp.status);
+    console.log('📨 Toggle response headers:', resp.headers.get('content-type'));
 
-  if (!json.ok) { alert(json.msg || 'Error al actualizar'); return; }
+    // Verificar el tipo de contenido
+    const contentType = resp.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await resp.text();
+      console.error('❌ Respuesta toggle no es JSON:', text);
+      console.error('❌ Content-Type recibido:', contentType);
+      console.error('❌ Status:', resp.status);
+      console.error('❌ Headers completos:', [...resp.headers.entries()]);
+      alert('Error del servidor: La respuesta no es válida (Content-Type: ' + contentType + '). Revisa la consola para más detalles.');
+      return;
+    }
 
-  loadTable(tabla, cache[tabla]?.q || '');
+    const json = await resp.json();
+    console.log('📥 Toggle response JSON:', json);
+
+    if (!json.ok) { 
+      console.error('❌ Error de API toggle:', json.msg);
+      alert(json.msg || 'Error al actualizar estado'); 
+      return; 
+    }
+
+    console.log('✅ Estado actualizado exitosamente');
+    
+    // Recargar la tabla específica en lugar de depender de activeTab
+    const currentQuery = cache[tabla]?.q || '';
+    console.log(`🔄 Recargando tabla ${tabla} con query: "${currentQuery}"`);
+    await loadTable(tabla, currentQuery);
+    
+    // También actualizar activeTab si es necesario
+    const currentTab = document.querySelector('.nav-tabs .nav-link.active');
+    if (currentTab) {
+      const currentTabla = currentTab.getAttribute('data-tabla');
+      if (currentTabla !== tabla) {
+        console.log(`⚠️ Tab activo (${currentTabla}) diferente a tabla modificada (${tabla})`);
+      }
+      activeTab = currentTabla || tabla;
+    } else {
+      activeTab = tabla;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en toggleActivo:', error);
+    if (error instanceof SyntaxError && error.message.includes('JSON')) {
+      alert('Error: El servidor devolvió una respuesta inválida. Puede haber un error de PHP.');
+    } else {
+      alert('Error al cambiar el estado: ' + error.message);
+    }
+  } finally {
+    // Restaurar el botón
+    if (button) {
+      button.disabled = false;
+      button.innerHTML = originalContent;
+    }
+  }
 }
 
 

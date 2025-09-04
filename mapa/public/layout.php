@@ -36,8 +36,8 @@ if (!function_exists('tienePermiso')) {
   <!-- Estilos -->
   <link rel="stylesheet" href="../server/styles_layout.css" />
   <link href="../server/style/bootstrap.min.css" rel="stylesheet">
-  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
-  <script src="https://unpkg.com/akar-icons-fonts"></script>
+  <link href="../server/style/boxicons.min.css" rel="stylesheet" />
+  
 
   <style>
     .navbar {

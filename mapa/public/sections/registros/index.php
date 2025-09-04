@@ -151,7 +151,7 @@ require_once 'catalogos.php'; // Obtiene los datos de catálogos
   </div>
 
   <!-- JS -->
-  <script src="../server/js/bootstrap.bundle.min.js"></script>
+  <script src="/final/mapa/server/js/bootstrap.bundle.min.js"></script>
   <script src="pagination.js"></script>
   <script src="modal.js"></script>
 

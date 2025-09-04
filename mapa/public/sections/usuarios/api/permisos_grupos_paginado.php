@@ -1,13 +1,14 @@
 <?php
 // permisos_grupos_paginado.php - API para listar grupos de permisos con paginación
+ob_start(); // Iniciar buffer de salida para evitar warnings
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/../../../../server/config.php';
+require_once '../../../../server/config.php';
 
 try {
     // Parámetros de paginación
-    $page = max(1, intval($_GET['page'] ?? 1));
-    $rowsPerPage = max(1, min(100, intval($_GET['rowsPerPage'] ?? 10)));
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $rowsPerPage = isset($_GET['rowsPerPage']) ? (int)$_GET['rowsPerPage'] : 10;
     $offset = ($page - 1) * $rowsPerPage;
     
     // Parámetros de filtro
@@ -15,10 +16,9 @@ try {
     $filtroModulo = trim($_GET['modulo'] ?? '');
     $filtroEntidad = trim($_GET['entidad'] ?? '');
     $filtroBus = trim($_GET['bus'] ?? '');
-    $buscar = trim($_GET['buscar'] ?? '');
     
     // Construir condición WHERE para el subquery de agrupación
-    $whereConditions = [];
+    $whereConditions = ['p.activo = 1'];
     $params = [];
     
     if (!empty($filtroUsuario)) {
@@ -49,7 +49,7 @@ try {
         }
     }
     
-    $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+    $whereClause = 'WHERE ' . implode(' AND ', $whereConditions);
     
     // Query base para obtener grupos únicos
     $baseQuery = "
@@ -64,31 +64,29 @@ try {
             COUNT(*) as combo_count,
             SUM(CASE WHEN p.activo = 1 THEN 1 ELSE 0 END) as activos_count,
             p.activo as primer_activo
-        FROM permisos p
-        LEFT JOIN usuarios u ON p.Fk_usuario = u.ID
-        LEFT JOIN modulos m ON p.Fk_modulo = m.ID
+        FROM permiso_usuario p
+        LEFT JOIN usuario u ON p.Fk_usuario = u.ID
+        LEFT JOIN modulo m ON p.Fk_modulo = m.ID
         $whereClause
         GROUP BY p.Fk_usuario, p.Fk_modulo, p.accion, COALESCE(p.group_token, CONCAT('individual_', p.ID))
     ";
     
-    // Aplicar filtro de búsqueda si existe
-    $havingClause = '';
-    if (!empty($buscar)) {
-        $havingClause = "HAVING (u.cuenta LIKE ? OR m.descripcion LIKE ?)";
-        $params = array_merge($params, ["%$buscar%", "%$buscar%"]);
-    }
-    
     // Contar total de grupos
-    $countQuery = "SELECT COUNT(*) as total FROM ($baseQuery $havingClause) as grupos";
+    $countQuery = "SELECT COUNT(*) as total FROM ($baseQuery) as grupos";
     $stmt = $pdo->prepare($countQuery);
     $stmt->execute($params);
     $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $totalPages = ceil($total / $rowsPerPage);
     
     // Obtener grupos con paginación
-    $finalQuery = "$baseQuery $havingClause ORDER BY min_id DESC LIMIT $rowsPerPage OFFSET $offset";
+    $finalQuery = "$baseQuery ORDER BY min_id DESC LIMIT :limit OFFSET :offset";
     $stmt = $pdo->prepare($finalQuery);
-    $stmt->execute($params);
+    foreach ($params as $i => $param) {
+        $stmt->bindValue($i + 1, $param);
+    }
+    $stmt->bindValue(':limit', $rowsPerPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $grupos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Para cada grupo, obtener sus combinaciones detalladas
@@ -99,8 +97,8 @@ try {
             SELECT p.*, 
                    e.descripcion as entidad_nombre,
                    b.descripcion as bus_nombre
-            FROM permisos p
-            LEFT JOIN entidades e ON p.FK_entidad = e.ID
+            FROM permiso_usuario p
+            LEFT JOIN entidad e ON p.FK_entidad = e.ID
             LEFT JOIN bus b ON p.FK_bus = b.ID
             WHERE p.Fk_usuario = ? AND p.Fk_modulo = ? AND p.accion = ?
         ";
@@ -196,15 +194,15 @@ try {
     }
     
     // Respuesta JSON
+    ob_clean(); // Limpiar cualquier output anterior
     echo json_encode([
         'html' => $html,
-        'total' => intval($total),
-        'totalPages' => intval($totalPages),
-        'currentPage' => $page,
-        'rowsPerPage' => $rowsPerPage
+        'total' => (int)$total,
+        'totalPages' => (int)$totalPages
     ]);
     
 } catch (Exception $e) {
+    ob_clean(); // Limpiar cualquier output anterior
     http_response_code(500);
     echo json_encode([
         'error' => 'Error interno del servidor',

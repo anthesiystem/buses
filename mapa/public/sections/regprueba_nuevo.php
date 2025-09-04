@@ -321,7 +321,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
     }
     .table-responsive{ max-height:70vh; }
     .table-brand thead th{
-      position:sticky; top:0; z-index:5; background:var(--header-bg);
+      background:var(--header-bg);
       border-bottom:1px solid var(--header-border); color:var(--muted);
       font-weight:700; text-transform:uppercase; font-size:.78rem; letter-spacing:.5px; cursor:pointer;
     }
@@ -616,7 +616,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
   </div>
 
   <!-- JS -->
-  <script src="../server/js/bootstrap.bundle.min.js"></script>
+  <script src="/final/mapa/server/js/bootstrap.bundle.min.js"></script>
 
   <script>
   /* =======================

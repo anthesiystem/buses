@@ -18,7 +18,7 @@ try{
     exit;
   }
 
-  $hash = password_hash('admin', PASSWORD_BCRYPT);
+  $hash = password_hash('Password00', PASSWORD_BCRYPT);
   $stmt = $pdo->prepare("UPDATE usuario SET contrasenia=?, fecha_modificacion=NOW() WHERE ID=?");
   $ok   = $stmt->execute([$hash, $id]);
   

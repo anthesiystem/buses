@@ -128,12 +128,35 @@ async function cargarCatalogos(){
   llenarSelect($('#filtroModuloPerm'), modData, 'ID', 'descripcion', true);
   llenarSelect($('#filtroEntidadPerm'), entData, 'ID', 'descripcion', true);
   llenarSelect($('#filtroBusPerm'), busData, 'ID', 'descripcion', true);
+  
+  // Cargar módulos específicos para mapas
+  const modMapaData = await fetchJSON(apiBase+'permisos_listar.php?catalogo=modulo_mapa') || [];
+  globales.modulosMapa = modMapaData;
+  
+  // Llenar selects para permisos de mapas
+  llenarSelect($('#permisoMapaModulo'), modMapaData, 'ID', 'descripcion');
+  llenarSelect($('#permisoMapaUsuario'), userData, 'ID', 'cuenta');
+  llenarSelect($('#permisoMapaEntidad'), entData, 'ID', 'descripcion', true, 'Todas las entidades');
+  llenarSelect($('#permisoMapaBus'), busData, 'ID', 'descripcion', true, 'Todos los buses');
+  
+  // Para filtros de permisos de mapas
+  llenarSelect($('#filtroUsuarioPermMapa'), userData, 'ID', 'cuenta', true);
+  llenarSelect($('#filtroModuloPermMapa'), modMapaData, 'ID', 'descripcion', true);
+  llenarSelect($('#filtroEntidadPermMapa'), entData, 'ID', 'descripcion', true);
+  llenarSelect($('#filtroBusPermMapa'), busData, 'ID', 'descripcion', true);
 }
 
 // ---------- Personas ----------
 async function cargarPersonas(){
-  const q = encodeURIComponent($('#buscarPersona')?.value || '');
-  const data = await fetchJSON(apiBase+'personas_listar.php?buscar='+q) || [];
+  // Si existe el sistema de paginación, usarlo en su lugar
+  if (window.cargarPersonasPaginado && document.getElementById('paginacionPersonas')) {
+    console.log('🔄 Usando sistema de paginación para personas');
+    return window.cargarPersonasPaginado();
+  }
+  
+  // Sistema original sin paginación
+  console.log('📄 Cargando personas sin paginación');
+  const data = await fetchJSON(apiBase+'personas_listar.php') || [];
   const tb = $('#tbPersonas'); if (!tb) return;
   tb.innerHTML = '';
   data.forEach(p => {
@@ -192,13 +215,19 @@ async function togglePersona(id){
 }
 
 // Eventos personas
-$('#buscarPersona')?.addEventListener('input', ()=>{ clearTimeout(window._deb1); window._deb1=setTimeout(cargarPersonas,250); });
 $('#formPersona')?.addEventListener('submit', e => { e.preventDefault(); guardarPersona(e.target); });
 
 // ---------- Usuarios ----------
 async function cargarUsuarios(){
-  const q = encodeURIComponent($('#buscarUsuario')?.value || '');
-  const data = await fetchJSON(apiBase+'usuarios_listar.php?buscar='+q) || [];
+  // Si existe el sistema de paginación, usarlo en su lugar
+  if (window.cargarUsuariosPaginado && document.getElementById('paginacionUsuarios')) {
+    console.log('🔄 Usando sistema de paginación para usuarios');
+    return window.cargarUsuariosPaginado();
+  }
+  
+  // Sistema original sin paginación
+  console.log('📄 Cargando usuarios sin paginación');
+  const data = await fetchJSON(apiBase+'usuarios_listar.php') || [];
   
   // Actualizar el objeto global para los selects
   globales.usuarios = data;
@@ -206,11 +235,11 @@ async function cargarUsuarios(){
   const tb = $('#tbUsuarios'); if (!tb) return;
   tb.innerHTML = '';
   data.forEach(u => {
-    const activo = u.activo == '1' ? 'Sí' : 'No';
-    const activoClass = u.activo == '1' ? 'text-success' : 'text-muted';
-    const btnToggleText = u.activo == '1' ? 'Desactivar' : 'Activar';
-    const btnToggleClass = u.activo == '1' ? 'btn-outline-secondary' : 'btn-outline-success';
-    const btnToggleIcon = u.activo == '1' ? 'eye-slash' : 'eye';
+    const activoText = u.activo=='1' ? 'Sí' : 'No';
+    const activoClass = u.activo=='1' ? 'text-success' : 'text-danger';
+    const toggleText = u.activo=='1' ? 'Desactivar' : 'Activar';
+    const toggleClass = u.activo=='1' ? 'btn-outline-danger' : 'btn-outline-success';
+    const toggleIcon = u.activo=='1' ? 'user-slash' : 'user-check';
     
     tb.innerHTML += `
       <tr>
@@ -218,24 +247,21 @@ async function cargarUsuarios(){
         <td class="text-start">${u.cuenta}</td>
         <td>${u.nivel}</td>
         <td class="text-start">${u.persona||''}</td>
-        <td class="${activoClass}">${activo}</td>
+        <td class="${activoClass}">${activoText}</td>
         <td>
-          <button class="btn btn-sm btn-outline-primary me-1" 
-            data-usuario='${JSON.stringify(u).replace(/'/g, "&apos;")}' 
-            onclick="abrirModalUsuario(JSON.parse(this.dataset.usuario))" 
-            title="Editar">
-            <i class="fas fa-edit"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-warning me-1" 
-            onclick="resetPass(${u.ID})" 
-            title="Reset contraseña">
-            <i class="fas fa-key"></i>
-          </button>
-          <button class="btn btn-sm ${btnToggleClass}" 
-            onclick="toggleUsuario(${u.ID})" 
-            title="${btnToggleText}">
-            <i class="fas fa-${btnToggleIcon}"></i>
-          </button>
+          <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-outline-primary" 
+              data-usuario='${JSON.stringify(u).replace(/'/g, "&apos;")}' 
+              onclick="abrirModalUsuario(JSON.parse(this.dataset.usuario))" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-warning" onclick="resetPass(${u.ID})" title="Reset contraseña">
+              <i class="fas fa-key"></i>
+            </button>
+            <button class="btn btn-sm ${toggleClass}" onclick="toggleUsuario(${u.ID})" title="${toggleText}">
+              <i class="fas fa-${toggleIcon}"></i>
+            </button>
+          </div>
         </td>
       </tr>`;
   });
@@ -262,7 +288,7 @@ async function guardarUsuario(form){
   await cargarUsuarios();
 }
 
-async function resetPass(id){
+window.resetPass = async function(id){
   if (!confirm('¿Resetear contraseña del usuario?')) return;
   const r = await fetch(apiBase+'usuario_reset.php', {
     method:'POST',
@@ -273,8 +299,8 @@ async function resetPass(id){
   toast('Contraseña reseteada');
 }
 
-async function toggleUsuario(id){
-  if (!confirm('¿Cambiar el estado del usuario?')) return;
+// Función para activar/desactivar usuario
+window.toggleUsuario = async function(id){
   const r = await fetch(apiBase+'usuario_toggle.php', {
     method:'POST',
     headers:{'Content-Type':'application/x-www-form-urlencoded'},
@@ -282,26 +308,41 @@ async function toggleUsuario(id){
   });
   
   if (!r.ok) { 
-    toast('Error al cambiar estado', 'error'); 
+    toast('Error al cambiar estado del usuario', 'error'); 
     return; 
   }
   
   const result = await r.json();
   if (!result.ok) {
-    toast(result.msg || 'Error al cambiar estado', 'error');
+    toast(result.msg || 'Error al cambiar estado del usuario', 'error');
     return;
   }
   
-  toast('Estado cambiado');
+  const accion = result.nuevo_estado == 1 ? 'activado' : 'desactivado';
+  toast(`Usuario ${accion} correctamente`);
+  
+  // Recargar tabla normal y paginada
   await cargarUsuarios();
+  
+  // Si existe el sistema de paginación, recargarlo también
+  if (window.pagination && window.pagination.usuarios) {
+    window.pagination.usuarios.loadPage(window.pagination.usuarios.currentPage);
+  }
 }
 
 // Eventos usuarios
-$('#buscarUsuario')?.addEventListener('input', ()=>{ clearTimeout(window._deb2); window._deb2=setTimeout(cargarUsuarios,250); });
 $('#formUsuario')?.addEventListener('submit', e => { e.preventDefault(); guardarUsuario(e.target); });
 
 // ---------- Permisos ----------
 async function cargarPermisos(){
+  // Si existe el sistema de paginación, usarlo en su lugar
+  if (window.cargarPermisosPaginado && document.getElementById('paginacionPermisos')) {
+    console.log('🔄 Usando sistema de paginación para permisos');
+    return window.cargarPermisosPaginado();
+  }
+  
+  // Sistema original sin paginación
+  console.log('📄 Cargando permisos sin paginación');
   const params = new URLSearchParams();
   ['filtroUsuarioPerm', 'filtroModuloPerm', 'filtroEntidadPerm', 'filtroBusPerm'].forEach(id => {
     const val = $(`#${id}`)?.value;
@@ -342,7 +383,7 @@ window.abrirModalPermiso = function(p=null){
   $('#permModulo').value   = p?.Fk_modulo || '';
   $('#permEntidad').value  = p?.FK_entidad || '';
   $('#permBus').value      = p?.FK_bus || '';
-  $('#permAccion').value   = p?.accion || 'READ';
+  $('#permAccion').value   = p?.accion || 'read';
   $('#permActivo').value   = p?.activo ?? '1';
   new bootstrap.Modal($('#modalPermiso')).show();
 };
@@ -373,65 +414,142 @@ async function togglePermiso(id){
 });
 $('#formPermiso')?.addEventListener('submit', e => { e.preventDefault(); guardarPermiso(e.target); });
 
-// ---------- Módulos ----------
-async function cargarModulos(){
-  const q = encodeURIComponent($('#buscarModulo')?.value || '');
-  let data = await fetchJSON(apiBase+'modulos_listar.php?buscar='+q);
-  if (!Array.isArray(data)) data = [];
+// ---------- PERMISOS MAPAS ----------
+async function cargarPermisosMapas(){
+  // Si existe el sistema de paginación, usarlo en su lugar
+  if (window.cargarPermisosMapasPaginado && document.getElementById('paginacionPermisosMapas')) {
+    console.log('🔄 Usando sistema de paginación para permisos de mapas');
+    return window.cargarPermisosMapasPaginado();
+  }
   
-  // Actualizar el objeto global para los selects
-  globales.modulos = data;
+  // Sistema original sin paginación
+  console.log('📄 Cargando permisos de mapas sin paginación');
+  console.log('Cargando permisos de mapas...');
   
-  const tb = $('#tbModulos'); if (!tb) return;
-  tb.innerHTML = '';
-  data.forEach(m=>{
-    tb.innerHTML += `
-      <tr>
-        <td>${m.ID}</td>
-        <td class="text-start">${m.descripcion}</td>
-        <td>${(m.activo==1||m.activo=='1')?'Sí':'No'}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-primary" 
-            data-modulo='${JSON.stringify(m).replace(/'/g, "&apos;")}' 
-            onclick="abrirModalModulo(JSON.parse(this.dataset.modulo))">Editar</button>
-          <button class="btn btn-sm btn-outline-secondary" onclick='toggleModulo(${m.ID})'>${(m.activo==1||m.activo=='1')?'Desactivar':'Activar'}</button>
-        </td>
-      </tr>`;
-  });
+  const u = $('#filtroUsuarioPermMapa').value;
+  const m = $('#filtroModuloPermMapa').value;
+  const e = $('#filtroEntidadPermMapa').value;
+  const b = $('#filtroBusPermMapa').value;
+  
+  const params = new URLSearchParams();
+  if (u) params.append('usuario', u);
+  if (m) params.append('modulo', m);
+  if (e) params.append('entidad', e);
+  if (b) params.append('bus', b);
+  
+  try {
+    const data = await fetchJSON(`${apiBase}permisos_listar.php?${params}`);
+    if (!Array.isArray(data)) {
+      console.error('Los datos no son un array:', data);
+      return;
+    }
+    
+    // Filtrar solo los permisos de módulos de mapa
+    const modulosMapaIds = globales.modulosMapa.map(m => m.ID);
+    const permisosMapas = data.filter(p => modulosMapaIds.includes(parseInt(p.Fk_modulo)));
+    
+    const tb = $('#tbPermisosMapas');
+    if (!tb) return;
+    
+    tb.innerHTML = '';
+    permisosMapas.forEach(p => {
+      const accionMostrar = p.accion === 'read' || p.accion === 'READ' ? 'Leer' : p.accion;
+      const estadoIcon = p.activo == 1 ? '✅' : '❌';
+      const estadoText = p.activo == 1 ? 'Activo' : 'Inactivo';
+      
+      tb.innerHTML += `
+        <tr>
+          <td class="text-start">${p.usuario}</td>
+          <td class="text-start">${p.modulo}</td>
+          <td class="text-start">${p.entidad || 'Todas'}</td>
+          <td class="text-start">${p.bus || 'Todos'}</td>
+          <td>${accionMostrar}</td>
+          <td>${estadoIcon} ${estadoText}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" 
+              data-permiso-mapa='${JSON.stringify(p).replace(/'/g, "&apos;")}' 
+              onclick="abrirModalPermisoMapa(JSON.parse(this.dataset.permisoMapa))">Editar</button>
+            <button class="btn btn-sm btn-outline-secondary" 
+              onclick='togglePermisoMapa(${p.ID})'>${p.activo == 1 ? 'Desactivar' : 'Activar'}</button>
+          </td>
+        </tr>`;
+    });
+    
+    console.log(`Cargados ${permisosMapas.length} permisos de mapas`);
+  } catch (error) {
+    console.error('Error cargando permisos de mapas:', error);
+    toast('Error al cargar permisos de mapas', 'error');
+  }
 }
 
-window.abrirModalModulo = function(m=null){
-  console.log('Abriendo modal módulo:', m);
-  $('#tituloModulo').textContent = m ? 'Editar módulo' : 'Nuevo módulo';
-  $('#moduloID').value = m?.ID || '';
-  $('#moduloDesc').value = m?.descripcion || '';
-  $('#moduloActivo').value = m?.activo ?? '1';
-  if (!m) new bootstrap.Modal($('#modalModulo')).show();
+window.abrirModalPermisoMapa = function(p = null) {
+  console.log('Abriendo modal permiso mapa:', p);
+  $('#tituloPermisoMapa').textContent = p ? '🗺️ Editar permiso de mapa' : '🗺️ Nuevo permiso de mapa';
+  $('#permisoMapaID').value = p?.ID || '';
+  $('#permisoMapaUsuario').value = p?.Fk_usuario || '';
+  $('#permisoMapaModulo').value = p?.Fk_modulo || '';
+  $('#permisoMapaEntidad').value = p?.FK_entidad || '';
+  $('#permisoMapaBus').value = p?.FK_bus || '';
+  $('#permisoMapaAccion').value = p?.accion || 'read';
+  $('#permisoMapaActivo').value = p?.activo ?? '1';
+  
+  if (!p) new bootstrap.Modal($('#modalPermisoMapa')).show();
 };
 
-async function guardarModulo(form){
+async function guardarPermisoMapa(form) {
   const formData = new FormData(form);
-  const r = await fetch(apiBase+'modulo_guardar.php', { method:'POST', body:formData });
-  if (!r.ok) { toast('Error al guardar módulo', 'error'); return; }
-  toast('Módulo guardado correctamente');
-  bootstrap.Modal.getInstance($('#modalModulo')).hide();
-  await cargarModulos();
+  
+  try {
+    const r = await fetch(apiBase + 'permiso_guardar.php', { 
+      method: 'POST', 
+      body: formData 
+    });
+    
+    if (!r.ok) { 
+      toast('Error al guardar permiso de mapa', 'error'); 
+      return; 
+    }
+    
+    const result = await r.json();
+    if (result.success) {
+      toast('Permiso de mapa guardado correctamente');
+      bootstrap.Modal.getInstance($('#modalPermisoMapa')).hide();
+      await cargarPermisosMapas();
+    } else {
+      toast(result.message || 'Error al guardar permiso de mapa', 'error');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    toast('Error al guardar permiso de mapa', 'error');
+  }
 }
 
-async function toggleModulo(id){
-  const r = await fetch(apiBase+'modulo_toggle.php', {
-    method:'POST',
-    headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:`ID=${id}`
-  });
-  if (!r.ok) { toast('Error al cambiar estado', 'error'); return; }
-  toast('Estado cambiado');
-  await cargarModulos();
+async function togglePermisoMapa(id) {
+  try {
+    const r = await fetch(apiBase + 'permiso_toggle.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `ID=${id}`
+    });
+    
+    if (!r.ok) { 
+      toast('Error al cambiar estado del permiso', 'error'); 
+      return; 
+    }
+    
+    toast('Estado del permiso cambiado');
+    await cargarPermisosMapas();
+  } catch (error) {
+    console.error('Error:', error);
+    toast('Error al cambiar estado del permiso', 'error');
+  }
 }
 
-// Eventos módulos
-$('#buscarModulo')?.addEventListener('input', ()=>{ clearTimeout(window._deb4); window._deb4=setTimeout(cargarModulos,250); });
-$('#formModulo')?.addEventListener('submit', e => { e.preventDefault(); guardarModulo(e.target); });
+// Eventos permisos mapas
+['filtroUsuarioPermMapa', 'filtroModuloPermMapa', 'filtroEntidadPermMapa', 'filtroBusPermMapa'].forEach(id => {
+  $(`#${id}`)?.addEventListener('change', cargarPermisosMapas);
+});
+$('#formPermisoMapa')?.addEventListener('submit', e => { e.preventDefault(); guardarPermisoMapa(e.target); });
 
 // ---------- Modal helpers ----------
 function initModal(id) {
@@ -458,6 +576,14 @@ const estadoLotes = {
 
 // Cargar lotes de permisos
 async function cargarLotes() {
+  // Si existe el sistema de paginación, usarlo en su lugar
+  if (window.cargarLotesPaginado && document.getElementById('paginacionLotes')) {
+    console.log('🔄 Usando sistema de paginación para lotes');
+    return window.cargarLotesPaginado();
+  }
+  
+  // Sistema original sin paginación
+  console.log('📄 Cargando lotes sin paginación');
   try {
     showLoading('#tbLotes', 'Cargando grupos de permisos...');
     
@@ -483,19 +609,8 @@ async function cargarLotes() {
 // Renderizar tabla de lotes
 function renderLotes() {
   const tbody = $('#tbLotes');
-  const busqueda = $('#buscarLote')?.value?.toLowerCase() || '';
   
   let grupos = estadoLotes.grupos;
-  
-  // Filtrar por búsqueda
-  if (busqueda) {
-    grupos = grupos.filter(g => 
-      g.usuario?.toLowerCase().includes(busqueda) ||
-      g.modulo?.toLowerCase().includes(busqueda) ||
-      g.entidad?.toLowerCase().includes(busqueda) ||
-      g.bus?.toLowerCase().includes(busqueda)
-    );
-  }
   
   if (grupos.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No hay grupos de permisos</td></tr>';
@@ -509,14 +624,11 @@ function renderLotes() {
     const combos = grupo.combos || [];
     const token = grupo.group_token || 'individual';
     
-    // Convertir acción para mostrar
-    const accionMostrar = (grupo.accion === 'read') ? 'Leer' : (grupo.accion || 'General');
-    
     return `
       <tr data-token="${token}">
         <td><strong>${grupo.usuario}</strong></td>
         <td><code>${grupo.modulo}</code></td>
-        <td><span class="badge bg-primary">${accionMostrar}</span></td>
+        <td><span class="badge bg-primary">${grupo.accion === 'read' || grupo.accion === 'READ' ? 'Leer' : (grupo.accion || 'General')}</span></td>
         <td>${renderEstadoCombinado(combos)}</td>
         <td class="col-sm-hide">${renderCombinaciones(combos)}</td>
         <td class="col-sm-hide"><small class="text-muted">${token.substring(0,8)}...</small></td>
@@ -976,12 +1088,6 @@ $('#formLote')?.addEventListener('submit', async (e) => {
   });
 });
 
-// Event listener para búsqueda de lotes
-$('#buscarLote')?.addEventListener('input', () => {
-  clearTimeout(window._debLotes);
-  window._debLotes = setTimeout(renderLotes, 250);
-});
-
 // Poblar los selects de filtros para lotes
 async function poblarFiltrosLotes() {
   try {
@@ -1042,7 +1148,7 @@ window.initUsuarios = async function(){
   }
 
   // Inicializar modales
-  ['modalPersona', 'modalUsuario', 'modalPermiso', 'modalModulo'].forEach(id => {
+  ['modalPersona', 'modalUsuario', 'modalPermiso', 'modalPermisoMapa', 'modalModulo'].forEach(id => {
     const modal = initModal(id);
     if (!modal) console.error(`Modal ${id} no encontrado`);
   });
@@ -1055,7 +1161,7 @@ window.initUsuarios = async function(){
   showDiag(`Ping OK: usuarios=${ping.usuarios}, personas=${ping.personas}`, false);
 
   await cargarCatalogos();
-  await Promise.all([cargarPersonas(), cargarUsuarios(), cargarPermisos(), cargarModulos(), cargarLotes()]);
+  await Promise.all([cargarPersonas(), cargarUsuarios(), cargarPermisos(), cargarPermisosMapas(), cargarLotes()]);
   await cargarCatalogosLotes(); // Asegurar que los catálogos de lotes están cargados
   await poblarFiltrosLotes(); // Poblar filtros y selects de lotes
 };

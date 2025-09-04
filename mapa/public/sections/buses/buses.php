@@ -244,6 +244,25 @@
   align-items: center;
 }
 
+/* Indicador de modo automático */
+.per-page-selector select option[value="auto"] {
+  font-weight: bold;
+  color: #941414ff;
+}
+
+/* Estilos para botones de navegación rápida */
+.pagination-nav .page-btn[title*="Primera"],
+.pagination-nav .page-btn[title*="Última"] {
+  min-width: 40px;
+  font-size: 16px;
+}
+
+/* Información de paginación más destacada */
+#paginationInfo {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .pagination-controls {
     flex-direction: column;
@@ -253,6 +272,8 @@
   .pagination-info {
     justify-content: center;
     order: 3;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
   
   .pagination-nav {
@@ -268,6 +289,18 @@
   .page-numbers {
     flex-wrap: wrap;
     justify-content: center;
+  }
+  
+  /* Ocultar botones de navegación rápida en móvil */
+  .pagination-nav .page-btn[title*="Primera"],
+  .pagination-nav .page-btn[title*="Última"] {
+    display: none;
+  }
+  
+  /* Información más compacta en móvil */
+  #paginationInfo {
+    font-size: 0.8rem;
+    text-align: center;
   }
 }</style>
 
@@ -288,18 +321,6 @@
   <div class="pagination-controls">
  
     
-    <div class="pagination-info">
-      <div class="per-page-selector">
-        <label for="perPageSelect" class="form-label me-2 mb-0">Mostrar:</label>
-        <select id="perPageSelect" class="form-select form-select-sm">
-          <option value="5">5</option>
-          <option value="10" selected>10</option>
-          <option value="20">20</option>
-          <option value="50">50</option>
-        </select>
-      </div>
-      <span id="paginationInfo">Cargando...</span>
-    </div>
     
     <button class="btn btn-brand" onclick="abrirModalBus()">➕ Agregar Bus</button>
   </div>

@@ -5,6 +5,13 @@ async function generarPDF_v2() {
   console.log("📍 URL actual:", window.location.href);
   console.log("📁 Base URL:", window.location.origin);
   
+  // Verificar que jsPDF esté disponible
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    console.error("❌ Error: jsPDF no está cargado. Verificar que las librerías estén incluidas.");
+    alert("Error: Las librerías de PDF no están cargadas correctamente.");
+    return;
+  }
+  
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -414,39 +421,43 @@ async function generarPDF_v2() {
   });
 
   // Tabla con configuración mejorada
+  const currentPageWidth = doc.internal.pageSize.getWidth();
+  const tableWidth = 568; // Ancho total de la tabla
+  const leftMargin = (currentPageWidth - tableWidth) / 2; // Centrar automáticamente
+  
   doc.autoTable({
     head: headers,
     body: rows,
     startY: 120,
-    margin: { top: 80, bottom: 40, left: 15, right: 15 }, // Márgenes más pequeños
+    margin: { top: 80, bottom: 40, left: leftMargin, right: leftMargin }, // Centrado calculado
     styles: { 
-      fontSize: 8,           // Reducido de 8 a 7 para mejor balance
+      fontSize: 7,           
       halign: 'center',
       valign: 'middle',
-      cellPadding: 3,        // Más padding
+      cellPadding: 2,        
       lineColor: [0, 0, 0],
       lineWidth: 0.1,
-      overflow: 'linebreak'
+      overflow: 'linebreak' // Volver a linebreak que es más compatible
     },
     headStyles: { 
       fillColor: [155, 34, 71], 
       textColor: 255, 
       fontStyle: 'bold', 
-      fontSize: 8,           // Tamaño aún más pequeño para headers
+      fontSize: 8,           
       halign: 'center',
-      valign: 'middle'       // Agregado para mejor alineación
+      valign: 'middle'
     },
     columnStyles: {
-      0: { cellWidth: 70, fontSize: 7, halign: 'center' },   // CATEGORÍA - más ancho, fuente más pequeña
-      1: { cellWidth: 85, fontSize: 7, halign: 'center' },   // BUS
-      2: { cellWidth: 75, fontSize: 7, halign: 'center' },   // MOTOR BASE - más ancho
-      3: { cellWidth: 70, fontSize: 7, halign: 'center' },   // TECNOLOGÍA - más ancho
-      4: { cellWidth: 45, fontSize: 7, halign: 'center' },   // VER.
-      5: { cellWidth: 65, fontSize: 7, halign: 'center' },   // DEPEND.
-      6: { cellWidth: 60, fontSize: 7, halign: 'center' },   // F.INICIO
-      7: { cellWidth: 60, fontSize: 7, halign: 'center' },   // F.MIGRAC.
-      8: { cellWidth: 65, fontSize: 7, halign: 'center' },   // ESTATUS
-      9: { cellWidth: 50, fontSize: 7, halign: 'center' }    // AVANCE
+      0: { cellWidth: 55, fontSize: 7, halign: 'center' },   // CATEGORÍA
+      1: { cellWidth: 65, fontSize: 7, halign: 'center' },   // BUS
+      2: { cellWidth: 58, fontSize: 7, halign: 'center' },   // MOTOR BASE
+      3: { cellWidth: 62, fontSize: 7, halign: 'center' },   // TECNOLOGÍA
+      4: { cellWidth: 40, fontSize: 7, halign: 'center' },   // VERSION
+      5: { cellWidth: 65, fontSize: 7, halign: 'center' },   // DEPENDENCIA
+      6: { cellWidth: 50, fontSize: 7, halign: 'center' },   // F.INICIO
+      7: { cellWidth: 58, fontSize: 7, halign: 'center' },   // F.MIGRACION
+      8: { cellWidth: 70, fontSize: 7, halign: 'center' },   // ESTATUS
+      9: { cellWidth: 45, fontSize: 7, halign: 'center' }    // AVANCE
     },
     alternateRowStyles: { fillColor: [245, 245, 245] },
     showHead: 'everyPage',
@@ -454,7 +465,7 @@ async function generarPDF_v2() {
     tableLineColor: [0, 0, 0],
     tableLineWidth: 0.1,
     rowPageBreak: 'auto',
-    minCellHeight: 12,  // Altura mínima de celda
+    minCellHeight: 12,
 
     willDrawCell: function (data) {
       // Forzar tamaño de fuente pequeño en headers

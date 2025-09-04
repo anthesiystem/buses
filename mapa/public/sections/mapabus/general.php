@@ -418,7 +418,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </style>
 
 <!-- Bootstrap Icons para el modal -->
-<link rel="stylesheet" href="../server/font/bootstrap-icons.css">
+<link rel="stylesheet" href="/final/mapa/server/font/bootstrap-icons.css">
 <link rel="stylesheet" href="/final/mapa/public/sections/lineadetiempo/stylelineatiempo.css">
 
 <!-- Script para el Modal de Comentarios -->
@@ -618,14 +618,23 @@ document.addEventListener("DOMContentLoaded", function () {
 <script src="/final/mapa/public/sections/lineadetiempo/comentarios_ui.js"></script>
 
 <!-- PDF -->
-<script src="../server/js/jspdf.umd.min.js"></script>
+<script src="/final/mapa/server/js/jspdf.umd.min.js"></script>
 
-<script src="../server/js/jspdf.plugin.autotable.min.js"></script>
-<script>window.jsPDF = window.jspdf.jsPDF;</script>
-<script src="/final/mapa/server/generar_pdf_v2.js?v=<?php echo time(); ?>"></script>
-<script src="/final/mapa/public/debug_rutas.js?v=<?php echo time(); ?>"></script>
-<script src="/final/mapa/public/debug_tabla.js?v=<?php echo time(); ?>"></script>
-<script src="/final/mapa/public/test_pdf.js?v=<?php echo time(); ?>"></script>
+<script src="/final/mapa/server/js/jspdf.plugin.autotable.min.js"></script>
+<script>
+// Debug: verificar qué está disponible
+console.log('window.jspdf:', window.jspdf);
+console.log('window.jsPDF:', window.jsPDF);
+
+// Configurar jsPDF correctamente
+if (window.jspdf && window.jspdf.jsPDF) {
+    window.jsPDF = window.jspdf.jsPDF;
+    console.log('✅ jsPDF configurado correctamente');
+} else {
+    console.error('❌ Error: jsPDF no está disponible');
+}
+</script>
+
 
 <!-- Script de prueba para verificar el borde punteado -->
 <script>

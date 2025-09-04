@@ -8,10 +8,12 @@ const ICONS_BASE_URL = (window.ICONS_BASE_URL || 'icons/');
 
   // Estado de paginación
   let currentPage = 1;
-  let perPage = 10;
+  let perPage = 8; // Valor inicial, se calculará dinámicamente
   let currentSearch = '';
   let totalPages = 1;
+  let totalRecords = 0;
   let searchTimeout = null;
+  let autoSizeEnabled = true; // Controla si se calcula automáticamente el tamaño
 
   function iconURL(imagen) {
     if (!imagen) return ICONS_BASE_URL + '_placeholder.png';
@@ -37,6 +39,10 @@ window.initBuses = function initBuses() {
     
     // Inicializar eventos de paginación
     initPaginationEvents();
+    
+    // Configurar cálculo automático de filas visibles
+    initAutoSizing();
+    
     yaInicializado = true;
   }
 
@@ -63,10 +69,79 @@ window.initBuses = function initBuses() {
     const perPageSelect = document.getElementById('perPageSelect');
     if (perPageSelect) {
       perPageSelect.addEventListener('change', (e) => {
-        perPage = parseInt(e.target.value);
-        currentPage = 1; // Resetear a primera página
-        cargarBuses();
+        const value = e.target.value;
+        if (value === 'auto') {
+          autoSizeEnabled = true;
+          setVisibleRows();
+        } else {
+          autoSizeEnabled = false;
+          perPage = parseInt(value);
+          currentPage = 1; // Resetear a primera página
+          cargarBuses();
+        }
       });
+    }
+  }
+
+  // Configurar cálculo automático de tamaño
+  function initAutoSizing() {
+    // Agregar opción "Auto" al selector si no existe
+    const perPageSelect = document.getElementById('perPageSelect');
+    if (perPageSelect && !perPageSelect.querySelector('option[value="auto"]')) {
+      const autoOption = document.createElement('option');
+      autoOption.value = 'auto';
+      autoOption.textContent = 'Auto';
+      autoOption.selected = true;
+      perPageSelect.insertBefore(autoOption, perPageSelect.firstChild);
+    }
+
+    // Configurar eventos de redimensionamiento
+    window.addEventListener('resize', debounceResize);
+    
+    // Calcular tamaño inicial
+    setTimeout(() => setVisibleRows(), 100);
+  }
+
+  // Debounce para el resize
+  let resizeTimeout = null;
+  function debounceResize() {
+    if (!autoSizeEnabled) return;
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(setVisibleRows, 250);
+  }
+
+  // Calcular filas visibles basándose en la altura de la ventana
+  function setVisibleRows() {
+    if (!autoSizeEnabled) return;
+
+    const rowHeight = 58; // Altura aproximada de cada fila en modo compacto
+    
+    // Obtener alturas de elementos fijos
+    const header = document.querySelector('.header-container') || 
+                  document.querySelector('h4'); // fallback al título
+    const paginationControls = document.querySelector('.pagination-controls');
+    const paginationNav = document.querySelector('.pagination-nav');
+    const tableHead = document.querySelector('.table thead');
+
+    const totalOffset =
+      (header?.offsetHeight ?? 60) +
+      (paginationControls?.offsetHeight ?? 80) +
+      (paginationNav?.offsetHeight ?? 50) +
+      (tableHead?.offsetHeight ?? 45) +
+      200; // Margen adicional para padding, márgenes, etc.
+
+    const availableHeight = window.innerHeight - totalOffset;
+    const visibleRows = Math.floor(availableHeight / rowHeight);
+
+    // Asegurar un mínimo y máximo razonable
+    const newPerPage = Math.max(5, Math.min(50, visibleRows));
+    
+    console.log(`📏 Cálculo automático: altura disponible=${availableHeight}px, filas visibles=${newPerPage}`);
+
+    if (newPerPage !== perPage) {
+      perPage = newPerPage;
+      currentPage = 1;
+      cargarBuses();
     }
   }
 
@@ -100,6 +175,7 @@ window.initBuses = function initBuses() {
         // Actualizar estado de paginación
         currentPage = pagination.current_page;
         totalPages = pagination.total_pages;
+        totalRecords = pagination.total_records;
 
         // Actualizar información de paginación
         updatePaginationInfo(pagination);
@@ -206,9 +282,18 @@ cuerpo.innerHTML += `<tr>
     const start = ((pagination.current_page - 1) * pagination.per_page) + 1;
     const end = Math.min(start + pagination.per_page - 1, pagination.total_records);
     
-    let text = `Mostrando ${start}-${end} de ${pagination.total_records} registros`;
+    let text = '';
+    if (pagination.total_records > 0) {
+      text = `Mostrando ${start}–${end} de ${pagination.total_records}`;
+      if (autoSizeEnabled) {
+        text += ` (${pagination.per_page} por página - Auto)`;
+      }
+    } else {
+      text = 'Mostrando 0–0 de 0';
+    }
+    
     if (pagination.search) {
-      text += ` (filtrado por "${pagination.search}")`;
+      text += ` | Filtrado por "${pagination.search}"`;
     }
     
     info.textContent = text;
@@ -226,10 +311,20 @@ cuerpo.innerHTML += `<tr>
 
     let navHTML = '';
 
+    // Botón primera página
+    navHTML += `
+      <button class="page-btn" onclick="goToFirstPage()" 
+              ${!pagination.has_previous ? 'disabled' : ''} 
+              title="Primera página">
+        ⏮️
+      </button>
+    `;
+
     // Botón anterior
     navHTML += `
-      <button class="page-btn" onclick="goToPage(${pagination.current_page - 1})" 
-              ${!pagination.has_previous ? 'disabled' : ''}>
+      <button class="page-btn" onclick="goToPreviousPage()" 
+              ${!pagination.has_previous ? 'disabled' : ''} 
+              title="Página anterior">
         ← Anterior
       </button>
     `;
@@ -258,7 +353,8 @@ cuerpo.innerHTML += `<tr>
     for (let i = startPage; i <= endPage; i++) {
       navHTML += `
         <button class="page-btn ${i === pagination.current_page ? 'active' : ''}" 
-                onclick="goToPage(${i})">
+                onclick="goToPage(${i})" 
+                title="Página ${i}">
           ${i}
         </button>
       `;
@@ -269,16 +365,26 @@ cuerpo.innerHTML += `<tr>
       if (endPage < pagination.total_pages - 1) {
         navHTML += '<span class="page-ellipsis">...</span>';
       }
-      navHTML += `<button class="page-btn" onclick="goToPage(${pagination.total_pages})">${pagination.total_pages}</button>`;
+      navHTML += `<button class="page-btn" onclick="goToPage(${pagination.total_pages})" title="Página ${pagination.total_pages}">${pagination.total_pages}</button>`;
     }
 
     navHTML += '</div>';
 
     // Botón siguiente
     navHTML += `
-      <button class="page-btn" onclick="goToPage(${pagination.current_page + 1})" 
-              ${!pagination.has_next ? 'disabled' : ''}>
+      <button class="page-btn" onclick="goToNextPage()" 
+              ${!pagination.has_next ? 'disabled' : ''} 
+              title="Página siguiente">
         Siguiente →
+      </button>
+    `;
+
+    // Botón última página
+    navHTML += `
+      <button class="page-btn" onclick="goToLastPage()" 
+              ${!pagination.has_next ? 'disabled' : ''} 
+              title="Última página">
+        ⏭️
       </button>
     `;
 
@@ -290,6 +396,46 @@ cuerpo.innerHTML += `<tr>
     if (page < 1 || page > totalPages || page === currentPage) return;
     currentPage = page;
     cargarBuses();
+  };
+
+  // Funciones de navegación rápida
+  window.goToFirstPage = function() {
+    goToPage(1);
+  };
+
+  window.goToLastPage = function() {
+    goToPage(totalPages);
+  };
+
+  window.goToPreviousPage = function() {
+    goToPage(currentPage - 1);
+  };
+
+  window.goToNextPage = function() {
+    goToPage(currentPage + 1);
+  };
+
+  // Función para cambiar el tamaño de página manualmente
+  window.setPerPage = function(newPerPage) {
+    autoSizeEnabled = false;
+    perPage = newPerPage;
+    currentPage = 1;
+    
+    // Actualizar el selector
+    const perPageSelect = document.getElementById('perPageSelect');
+    if (perPageSelect) {
+      perPageSelect.value = newPerPage;
+    }
+    
+    cargarBuses();
+  };
+
+  // Función para alternar entre modo automático y manual
+  window.toggleAutoSize = function() {
+    autoSizeEnabled = !autoSizeEnabled;
+    if (autoSizeEnabled) {
+      setVisibleRows();
+    }
   };
 
   // Abre modal para nuevo

@@ -30,8 +30,8 @@ function can($mod, $acc='READ'){ return acl_can($mod, $acc); }
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="../server/styles_layout.css" />
   <link href="../server/style/bootstrap.min.css" rel="stylesheet">
-  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
-  <script src="https://unpkg.com/akar-icons-fonts"></script>
+  <link href="../server/style/boxicons.min.css" rel="stylesheet" />
+  <!-- Configuración global -->
   <style>
     .navbar { z-index: 2000; }
     .navbar .navbar-brand img { height: 40px; }

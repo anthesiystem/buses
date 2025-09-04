@@ -6,40 +6,24 @@ require_once '../../../server/config.php';
 
 try {
     // Parámetros de paginación
-    $page = max(1, intval($_GET['page'] ?? 1));
-    $rowsPerPage = max(1, min(100, intval($_GET['rowsPerPage'] ?? 10)));
+    $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $rowsPerPage = isset($_GET['rowsPerPage']) ? (int)$_GET['rowsPerPage'] : 10;
     $offset = ($page - 1) * $rowsPerPage;
     
-    // Parámetro de búsqueda
-    $buscar = trim($_GET['buscar'] ?? '');
-    
-    // Construir condición WHERE
-    $whereConditions = [];
-    $params = [];
-    
-    if (!empty($buscar)) {
-        $whereConditions[] = "descripcion LIKE ?";
-        $params[] = "%$buscar%";
-    }
-    
-    $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
-    
     // Contar total de registros
-    $countSql = "SELECT COUNT(*) as total FROM modulos $whereClause";
-    
-    $stmt = $pdo->prepare($countSql);
-    $stmt->execute($params);
-    $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total = $pdo->query("SELECT COUNT(*) FROM modulo WHERE activo = 1")->fetchColumn();
     $totalPages = ceil($total / $rowsPerPage);
     
-    // Obtener registros con paginación
-    $sql = "SELECT * FROM modulos 
-            $whereClause
-            ORDER BY ID DESC
-            LIMIT $rowsPerPage OFFSET $offset";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    // Consulta con LIMIT y OFFSET
+    $stmt = $pdo->prepare("
+        SELECT * FROM modulo 
+        WHERE activo = 1
+        ORDER BY ID DESC
+        LIMIT :limit OFFSET :offset
+    ");
+    $stmt->bindValue(':limit', $rowsPerPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Generar HTML
@@ -75,10 +59,8 @@ try {
     // Respuesta JSON
     echo json_encode([
         'html' => $html,
-        'total' => intval($total),
-        'totalPages' => intval($totalPages),
-        'currentPage' => $page,
-        'rowsPerPage' => $rowsPerPage
+        'total' => (int)$total,
+        'totalPages' => (int)$totalPages
     ]);
     
 } catch (Exception $e) {
